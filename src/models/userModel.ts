@@ -53,3 +53,7 @@ User.init(
     paranoid: true,    // enables deleted_at for soft deletes
   }
 );
+
+// You can define associations here if needed
+import { PasswordReset } from './passwordReset';
+User.hasMany(PasswordReset, { foreignKey: 'user_id' });
