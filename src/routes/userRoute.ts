@@ -1,26 +1,26 @@
 import express from 'express';
-import { User } from '../models/userModel';
+import { signUpAuth, auth } from '../middlewares/userAuth';
+import { allUsers, completeProfile, login, signUp, updateAddress} from '../controllers/userController';
+
 
 const router = express.Router();
 
-router.get('/getUsers', async (req, res) => {
-  try {
-    const users = await User.findAll();
-    res.json(users);
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+router.get('/allUsers', allUsers);
 
-router.post('/createUser', async (req, res) => {
-  try {
-    const newUser = await User.create(req.body);    
-    res.status(201).json(newUser);
-  } catch (error) {
-    console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+router.post('/auth/signUp', signUpAuth, signUp);
+
+router.post('/completeProfile', auth, completeProfile);
+
+router.post('/auth/login', login);
+
+router.put('/updateAddress', auth, updateAddress);
+
+
+
+
+
+
+
+
 
 export default router;

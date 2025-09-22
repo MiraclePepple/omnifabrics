@@ -4,7 +4,7 @@ import userRoutes from './routes/userRoute';
 
 const app = express();
 app.use(express.json());
-app.use("/apiv1", userRoutes);
+app.use("/api/v1", userRoutes);
 
 app.get('/', (req, res) => {
   res.send('OmniFabrics API running!');
