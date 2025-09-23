@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { User } from "../models/userModel";
+import { User } from "../modules/users/user.model";
 import { verifyToken } from "../utils/jwt";
 
 export const signUpAuth = async (req: Request, res: Response, next: NextFunction) => {

@@ -1,10 +1,10 @@
 import express from 'express';
-import { signUpAuth, auth } from '../middlewares/userAuth';
-import { allUsers, completeProfile, forgotPassword, getProfile, login, resetPassword, signUp, updateAddress, verifyOTP} from '../controllers/userController';
-import { payForCart } from '../controllers/paymentController';
-import { addToWishlist, moveToCart, removeFromWishlist, viewWishlist } from '../controllers/wishlistController';
-import { addToCart, removeFromCart, viewCart } from '../controllers/cartController';
-import { getOrderHistory, rebuyProduct } from '../controllers/orderController';
+import { signUpAuth, auth } from '../../middlewares/userAuth';
+import { allUsers, completeProfile, forgotPassword, getProfile, login, resetPassword, signUp, updateAddress, verifyOTP} from './user.controller';
+import { payForCart } from '../../controllers/paymentController';
+import { addToWishlist, moveToCart, removeFromWishlist, viewWishlist } from '../../controllers/wishlistController';
+import { addToCart, removeFromCart, viewCart } from '../../controllers/cartController';
+import { getOrderHistory, rebuyProduct } from '../orders/order.controller';
 
 
 const router = express.Router();
@@ -17,9 +17,9 @@ router.post('/user/completeProfile', auth, completeProfile);
 
 router.post('/auth/login', login);
 
-router.put('/updateAddress', auth, updateAddress);
+router.put('/user/updateAddress', auth, updateAddress);
 
-router.get('/auth/profile', auth, getProfile);
+router.get('/user/profile', auth, getProfile);
 
 router.post('/auth/forgotPassword', forgotPassword);
 
@@ -46,6 +46,10 @@ router.post('/user/addToCart', auth, addToCart);
 router.get('/user/getOrderHistory/:user_id', auth, getOrderHistory);
 
 router.post('/user/rebuyProduct', auth, rebuyProduct);
+
+
+
+
 
 
 

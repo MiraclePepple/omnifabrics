@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { generateToken } from '../utils/jwt';
-import { User } from '../models/userModel';
-import { PasswordReset } from '../models/passwordReset';
-import { sendEmail } from '../utils/email';
+import { generateToken } from '../../utils/jwt';
+import { User } from './user.model';
+import { PasswordReset } from '../../models/passwordReset';
+import { sendEmail } from '../../utils/email';
 
 const allUsers = async (req: Request, res: Response) => {
   try {
@@ -16,26 +16,6 @@ const allUsers = async (req: Request, res: Response) => {
 };
 
 
-const signUp = async (req: Request, res: Response) => {
-  try {
-    const { email, phone_number, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      email,
-      phone_number,
-      password: hashedPassword,
-    });
-
-    return res.status(201).json({
-      message: "Signup successful. Please complete your profile.",
-      user_id: user.user_id,
-      email: user.email,
-    });
-  } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
 
 const completeProfile = async (req: Request, res: Response) => {
   const { user_id, first_name, last_name, gender } = req.body;
@@ -117,10 +97,8 @@ const login = async (req: Request, res: Response) => {
 
 const getProfile = async (req: Request, res: Response) => {
  try {
-    const userId = (req as any).user.id;
-    const user = await User.findByPk(userId, {
-      attributes: ["id", "first_name", "last_name", "email", "phone_number", "is_active", "is_suspended", "createdAt"] // select only needed fields
-    });
+  const user = (req as any).user; 
+  const { id, first_name, last_name, email, phone_number, is_active, is_suspended, createdAt } = user;
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -128,7 +106,16 @@ const getProfile = async (req: Request, res: Response) => {
 
     return res.json({
       message: "Profile fetched successfully",
-      user,
+      user: {
+        id,
+        first_name,
+        last_name,
+        email,
+        phone_number,
+        is_active,
+        is_suspended,
+        createdAt
+      },
     });
   } catch (err: any) {
     console.error(err);

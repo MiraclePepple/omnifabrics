@@ -40,6 +40,6 @@ PasswordReset.init(
   }
 );
 
-import { User } from './userModel';
+import { User } from '../modules/users/user.model';
 PasswordReset.belongsTo(User, { foreignKey: 'user_id' });
 User.hasMany(PasswordReset, { foreignKey: 'user_id' });

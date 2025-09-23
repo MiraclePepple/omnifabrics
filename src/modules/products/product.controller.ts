@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { Product } from "../models/productModel";
-import { ProductItem } from "../models/productItemModel";
+import { Product } from "./product.model";
+import { ProductItem } from "../../models/productItemModel";
 
 // Filter products based on price range, availability, and sort order
 export const filterProductsWithItems = async (req: Request, res: Response) => {
@@ -60,6 +60,82 @@ export const filterProductsWithItems = async (req: Request, res: Response) => {
     return res.json({ products: results });
   } catch (err) {
     console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getAllProducts = async (req: Request, res: Response) => {
+  try {
+    // Fetch all products including related data if needed (like category or store)
+    const products = await Product.findAll({
+      include: [
+        { association: "category" }, // if you have associations defined
+        { association: "store" }
+      ],
+      order: [["createdAt", "DESC"]], // newest first
+    });
+
+    return res.status(200).json({
+      message: "Products fetched successfully",
+      count: products.length,
+      products,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getProductById = async (req: Request, res: Response) => {
+  const { product_id } = req.params;
+
+  try {
+    const product = await Product.findByPk(product_id, {
+      include: [
+        { association: "category" },
+        { association: "store" },
+        { association: "productItems" }
+      ]
+    });
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    return res.status(200).json({
+      message: "Product fetched successfully",
+      product
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const searchProducts = async (req: Request, res: Response) => {
+  const { query } = req.query;
+
+  try {
+    const products = await Product.findAll({
+      where: {
+        product_name: {
+          [Op.like]: `%${query}%`
+        }
+      },
+      include: [
+        { association: "category" },
+        { association: "store" },
+        { association: "productItems" }
+      ]
+    });
+
+    return res.status(200).json({
+      message: "Products fetched successfully",
+      count: products.length,
+      products
+    });
+  } catch (error) {
+    console.error(error);
     return res.status(500).json({ message: "Server error" });
   }
 };

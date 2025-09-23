@@ -1,5 +1,5 @@
 import { DataTypes, Model } from "sequelize";
-import sequelize from "../config/db";
+import sequelize from "../../config/db";
 
 export class Order extends Model {
   public order_id!: number;

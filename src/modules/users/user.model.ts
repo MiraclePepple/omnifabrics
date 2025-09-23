@@ -1,5 +1,5 @@
 import { DataTypes, Model } from 'sequelize';
-import sequelize from '../config/db';
+import sequelize from '../../config/db';
 
 export class User extends Model {
   declare user_id: number;
@@ -26,8 +26,8 @@ export class User extends Model {
 User.init(
   {
     user_id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-    first_name: { type: DataTypes.STRING(100), allowNull: false },
-    last_name: { type: DataTypes.STRING(100), allowNull: false },
+    first_name: { type: DataTypes.STRING(100), allowNull: true },
+    last_name: { type: DataTypes.STRING(100), allowNull: true },
     email: { type: DataTypes.STRING(255), allowNull: false, unique: true },
     phone_number: { type: DataTypes.STRING(50), allowNull: false },
     password: { type: DataTypes.STRING(255), allowNull: false },
@@ -43,7 +43,7 @@ User.init(
     created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     deleted_at: { type: DataTypes.DATE },
-    gender: { type: DataTypes.ENUM("Male", "Female"), allowNull: false },
+    gender: { type: DataTypes.ENUM("Male", "Female", "Other"), allowNull: true },
   },
 
   {
@@ -55,5 +55,5 @@ User.init(
 );
 
 // You can define associations here if needed
-import { PasswordReset } from './passwordReset';
-User.hasMany(PasswordReset, { foreignKey: 'user_id' });
+//import { PasswordReset } from './passwordReset';
+//User.hasMany(PasswordReset, { foreignKey: 'user_id' });

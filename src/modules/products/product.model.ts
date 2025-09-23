@@ -1,9 +1,12 @@
 import { DataTypes, Model } from "sequelize";
-import sequelize from "../config/db";
+import sequelize from "../../config/db";
+//import { ProductItem } from "./productItemModel";
 
 export class Product extends Model {
   public product_id!: number;
+  public category_id!: number;
   public store_id!: number;
+  public user_id!: number;
   public product_name!: string;
   public short_description?: string;
   public full_description?: string;
@@ -21,7 +24,9 @@ export class Product extends Model {
 Product.init(
   {
     product_id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+    category_id: { type: DataTypes.BIGINT, allowNull: false },
     store_id: { type: DataTypes.BIGINT, allowNull: false },
+    user_id: { type: DataTypes.BIGINT, allowNull: false },
     product_name: { type: DataTypes.STRING(255), allowNull: false },
     short_description: { type: DataTypes.STRING(500), allowNull: true },
     full_description: { type: DataTypes.TEXT, allowNull: true },
@@ -41,3 +46,8 @@ Product.init(
     timestamps: false,
   }
 );
+
+// In productModel.ts
+//Product.belongsTo(Category, { as: "category", foreignKey: "category_id" });
+//Product.belongsTo(Store, { as: "store", foreignKey: "store_id" });
+//Product.hasMany(ProductItem, { as: "product_items", foreignKey: "product_id" });

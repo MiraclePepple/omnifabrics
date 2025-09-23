@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Wishlist } from "../models/wishlistModel";
 import { Cart } from "../models/cartModel";
 import { CartItem } from "../models/cartItemModel";
-import { Product } from "../models/productModel";
+import { Product } from "../modules/products/product.model";
 
 // Add item to wishlist
 export const addToWishlist = async (req: Request, res: Response) => {
