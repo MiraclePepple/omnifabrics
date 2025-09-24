@@ -3,7 +3,7 @@ import * as service from './rating.service';
 
 export const createRating = async (req:Request, res:Response) => {
   try {
-    const userId = req.user.user_id;
+    const userId = (req.user!).user_id;
     const data = await service.createRating(userId, req.body);
     res.status(201).json(data);
   } catch (err:any) {

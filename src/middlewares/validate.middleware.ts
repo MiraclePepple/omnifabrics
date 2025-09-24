@@ -16,3 +16,4 @@ export const validate = (schema: ObjectSchema, property: 'body' | 'query' | 'par
     next();
   };
 };
+

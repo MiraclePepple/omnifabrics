@@ -1,15 +1,20 @@
 import express from 'express';
 import sequelize from './config/db';
-import './models/index';
+import routes from './routes';
+import app from './app';
 
 
-const app = express();
+//const app = express();
 app.use(express.json());
-app.use("/api/v1", );
+app.use("/api/v1", routes);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 //app.get('/', (req, res) => {
  // res.send('OmniFabrics API running!');
 //});
+
 
 sequelize.authenticate()
   .then(() => {

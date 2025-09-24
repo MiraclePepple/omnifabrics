@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../../utils/jwt';
 import { User } from './user.model';
-import { PasswordReset } from '../../models/passwordReset';
+//import { PasswordReset } from '../../models/passwordReset';
 import { sendEmail } from '../../utils/email';
 
 const allUsers = async (req: Request, res: Response) => {
@@ -14,7 +14,6 @@ const allUsers = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-
 
 
 const completeProfile = async (req: Request, res: Response) => {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { signUpAuth, auth } from '../../middlewares/userAuth';
+import { signUpAuth, auth } from '../auth/auth.middleware';
 import { allUsers, completeProfile, forgotPassword, getProfile, login, resetPassword, signUp, updateAddress, verifyOTP} from './user.controller';
 import { payForCart } from '../../controllers/paymentController';
 import { addToWishlist, moveToCart, removeFromWishlist, viewWishlist } from '../../controllers/wishlistController';

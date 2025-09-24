@@ -9,3 +9,6 @@ router.post('/login', validate(loginSchema), ctrl.login);
 router.post('/send-otp', ctrl.sendOtp);
 
 export default router;
+
+
+

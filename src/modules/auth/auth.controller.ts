@@ -16,7 +16,21 @@ export const login = async (req:Request, res:Response) => {
 };
 
 export const sendOtp = async (req:Request, res:Response) => {
-  const { email } = req.body;
-  const otp = await svc.sendOtp(email);
-  res.json({ otp: process.env.NODE_ENV === 'development' ? otp : 'sent' });
-};
+  try{
+    const { email } = req.body;
+    const otp = await svc.sendOtp(email);
+    res.json({ otp: process.env.NODE_ENV === 'development' ? otp : 'sent' });
+} catch (err:any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export const verifyOtp = async (req: Request, res: Response) => {
+  try {
+    const { email, otp } = req.body;
+    const result = await svc.verifyOtp(email, otp);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+}

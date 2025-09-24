@@ -4,7 +4,7 @@ import * as service from './cart.service';
 
 export const addToCart = async (req:Request, res:Response) => {
   try {
-    const userId = req.user.user_id;
+    const userId = (req.user!).user_id;
     const item = await service.addItemToCart(userId, req.body);
     res.status(201).json(item);
   } catch (err:any) {
@@ -13,7 +13,7 @@ export const addToCart = async (req:Request, res:Response) => {
 };
 
 export const getCart = async (req:Request, res:Response) => {
-  const items = await service.listCartItems(req.user.user_id);
+  const items = await service.listCartItems(req.user!.user_id);
   res.json(items);
 };
 

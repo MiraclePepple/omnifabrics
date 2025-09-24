@@ -1,4 +1,3 @@
-// src/middlewares/auth.middleware.ts
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../../utils/jwt"
 
@@ -18,3 +17,4 @@ export const auth = (req: Request, res: Response, next: NextFunction) => {
     return res.status(401).json({ error: "Invalid token" });
   }
 };
+
