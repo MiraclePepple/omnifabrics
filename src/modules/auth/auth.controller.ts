@@ -1,47 +1,22 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import { User } from '../users/user.model';
+import * as svc from './auth.service';
 
-export const signupController = async (req: Request, res: Response) => {
+export const signup = async (req:Request, res:Response) => {
+  const u = await svc.signup(req.body);
+  res.status(201).json(u);
+};
+
+export const login = async (req:Request, res:Response) => {
   try {
-    const { email, phone_number, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      email,
-      phone_number,
-      password: hashedPassword,
-    });
-
-    return res.status(201).json({
-      message: "Signup successful. Please complete your profile.",
-      user_id: user.user_id,
-      email: user.email,
-    });
-  } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    const r = await svc.login(req.body.email, req.body.password);
+    res.json(r);
+  } catch (err:any) {
+    res.status(400).json({ error: err.message });
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-export const loginController = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  // Your login logic here
-  res.status(200).json({ message: 'Login successful', token: 'fakeToken123' });
+export const sendOtp = async (req:Request, res:Response) => {
+  const { email } = req.body;
+  const otp = await svc.sendOtp(email);
+  res.json({ otp: process.env.NODE_ENV === 'development' ? otp : 'sent' });
 };

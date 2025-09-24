@@ -1,14 +1,15 @@
 import express from 'express';
 import sequelize from './config/db';
-import userRoutes from './modules/users/user.route';
+import './models/index';
+
 
 const app = express();
 app.use(express.json());
 app.use("/api/v1", );
 
-app.get('/', (req, res) => {
-  res.send('OmniFabrics API running!');
-});
+//app.get('/', (req, res) => {
+ // res.send('OmniFabrics API running!');
+//});
 
 sequelize.authenticate()
   .then(() => {
