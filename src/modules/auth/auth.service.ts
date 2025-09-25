@@ -1,29 +1,35 @@
 import { User } from '../users/user.model';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import redis from '../../config/redis';
 
+// In-memory OTP store (email → { otp, expiresAt })
+const otpStore: Record<string, { otp: string; expiresAt: number }> = {};
 
-export const signup = async (data:any) => {
+// === SIGNUP ===
+export const signup = async (data: any) => {
   const hashed = await bcrypt.hash(data.password, 10);
-  const u = await User.create({ email: data.email, phone_number: data.phone_number, password: hashed,
-    is_active: true, is_suspended: false, created_at: new Date() });
-  // optionally send OTP/email to collect name/gender in second step
+
+  // user is active by default 
+  const u = await User.create({
+    email: data.email,
+    phone_number: data.phone_number,
+    password: hashed,
+    is_active: true,   
+    is_suspended: false,  
+    created_at: new Date()
+  });
+
   return u;
 };
 
+// === LOGIN ===
 export const login = async (email: string, password: string) => {
-  const user = await User.findOne({ where: { email }});
+  const user = await User.findOne({ where: { email } });
   if (!user) throw new Error('Invalid credentials');
 
   // check suspension
   if ((user as any).is_suspended) {
     throw new Error('Your account is suspended. Contact support.');
-  }
-
-  // check active
-  if (!(user as any).is_active) {
-    throw new Error('Your account is not active. Please verify your email or contact support.');
   }
 
   const ok = await bcrypt.compare(password, (user as any).password);
@@ -38,34 +44,42 @@ export const login = async (email: string, password: string) => {
   return { user, token };
 };
 
+// === SEND OTP (for forgot password) ===
+export const sendOtp = async (email: string) => {
+  // check user exists
+  const user = await User.findOne({ where: { email } });
+  if (!user) throw new Error('No account found with this email');
 
-// OTP flows: store OTP and expiry in some store (redis or DB), send email
-export const sendOtp = async (email:string) => {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  // store OTP in Redis with 10 min expiry
-  await redis.set(`otp:${email}`, otp, 'EX', 600); // 600 = 10 minutes
+
+  // store OTP in memory with 10 min expiry
+  otpStore[email] = { otp, expiresAt: Date.now() + 10 * 60 * 1000 };
 
   // send email (or SMS) here
-  console.log(`OTP for ${email}: ${otp}`);
-  // send email via mailer
-  return otp;  // for debugging / tests only
+  console.log(`OTP for password reset ${email}: ${otp}`);
+
+  return otp; // return for debugging / tests only
 };
 
-
+// === VERIFY OTP (for forgot password) ===
 export const verifyOtp = async (email: string, otp: string) => {
-  // get OTP from Redis
-  const storedOtp = await redis.get(`otp:${email}`);
-
-  if (!storedOtp) throw new Error('OTP expired or not found');
-  if (storedOtp !== otp) throw new Error('Invalid OTP');
-
-  // activate user
-  await User.update({ is_active: true }, { where: { email } });
+  const entry = otpStore[email];
+  if (!entry) throw new Error('OTP expired or not found');
+  if (entry.expiresAt < Date.now()) {
+    delete otpStore[email];
+    throw new Error('OTP expired');
+  }
+  if (entry.otp !== otp) throw new Error('Invalid OTP');
 
   // delete OTP after use
-  await redis.del(`otp:${email}`);
+  delete otpStore[email];
 
-  return { message: 'Account verified successfully' };
+  return { message: 'OTP verified successfully. You can now reset your password.' };
 };
 
-
+// === RESET PASSWORD AFTER OTP ===
+export const resetPassword = async (email: string, newPassword: string) => {
+  const hashed = await bcrypt.hash(newPassword, 10);
+  await User.update({ password: hashed }, { where: { email } });
+  return { message: 'Password reset successfully' };
+};

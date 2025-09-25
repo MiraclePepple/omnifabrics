@@ -1,14 +1,14 @@
 import Joi from 'joi';
 
 export const signupSchema = Joi.object({
-  name: Joi.string().min(3).max(50).required().messages({
-    'string.empty': 'Name is required',
-    'string.min': 'Name should have at least 3 characters',
-    'string.max': 'Name should not exceed 50 characters'
-  }),
   email: Joi.string().email().required().messages({
     'string.empty': 'Email is required',
     'string.email': 'Please provide a valid email address'
+  }),
+  phone_number: Joi.string().min(11).max(11).required().messages({
+    'string.empty': 'Phone number is required',
+    'string.min': 'Phone number should have at least 11 characters',
+    'string.max': 'Phone number should not exceed 11 characters'
   }),
   password: Joi.string().min(6).required().messages({
     'string.empty': 'Password is required',
@@ -26,6 +26,28 @@ export const loginSchema = Joi.object({
   }),
   password: Joi.string().required().messages({
     'string.empty': 'Password is required'
+  }),
+});
+
+//Reset Password Schema after OTP verification
+export const resetPasswordSchema = Joi.object({
+  email: Joi.string().email().required().messages({
+    'string.empty': 'Email is required',
+    'string.email': 'Please provide a valid email address'
+  }),
+  new_password: Joi.string().min(8).required().messages({
+    'string.empty': 'New password is required',
+    'string.min': 'New password should be at least 8 characters'
+  }),
+});
+
+export const changePasswordSchema = Joi.object({
+  old_password: Joi.string().required().messages({
+    'string.empty': 'Old password is required'
+  }),
+  new_password: Joi.string().min(8).required().messages({
+    'string.empty': 'New password is required',
+    'string.min': 'New password should be at least 8 characters'
   }),
 });
 
