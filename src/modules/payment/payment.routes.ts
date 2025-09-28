@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import * as ctrl from './payment.controller';
-import { auth } from '../auth/auth.middleware';
+import { payForProduct } from './payment.controller';
 
 const router = Router();
-router.post('/initiate', auth, ctrl.initiate);
-router.post('/confirm', ctrl.confirm); // webhook or client callback
+
+router.post('/pay', payForProduct);
 
 export default router;

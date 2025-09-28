@@ -1,12 +1,9 @@
 import { Request, Response } from "express";
-import { Order } from "../models/orderModel";
-import { ProductItem } from "../models/productItemModel";
-import { Cart } from "../models/cartModel";
-import { CartItem } from "../models/cartItemModel";
+import { Order } from "../orders/order.model";
+import { ProductItem } from "../product_items/product_item.model";
+import { Cart, CartItem } from "../cart/cart.model";
 
-
- //Get all previous orders for a user
-
+// Get all previous orders for a user
 export const getOrderHistory = async (req: Request, res: Response) => {
   const { user_id } = req.params;
 
@@ -31,7 +28,10 @@ export const getOrderHistory = async (req: Request, res: Response) => {
             const productItem = await ProductItem.findByPk(p.product_item_id);
             return {
               ...p,
-              is_available: productItem ? productItem.is_available && productItem.quantity > 0 : false,
+              is_available:
+                productItem &&
+                productItem.is_available &&
+                (productItem.quantity ?? 0) > 0,
             };
           })
         );
@@ -54,15 +54,17 @@ export const getOrderHistory = async (req: Request, res: Response) => {
   }
 };
 
-//Re-buy a product from a previous order
- 
+// Re-buy a product from a previous order
 export const rebuyProduct = async (req: Request, res: Response) => {
-  const { user_id } = req.body;
-  const { product_item_id, quantity = 1 } = req.body;
+  const { user_id, product_item_id, quantity = 1 } = req.body;
 
   try {
     const productItem = await ProductItem.findByPk(product_item_id);
-    if (!productItem || !productItem.is_available || productItem.quantity < quantity) {
+    if (
+      !productItem ||
+      !productItem.is_available ||
+      (productItem.quantity ?? 0) < quantity
+    ) {
       return res.status(400).json({ message: "Product is out of stock" });
     }
 
@@ -73,17 +75,30 @@ export const rebuyProduct = async (req: Request, res: Response) => {
     }
 
     // Check if product is already in cart
-    const existingItem = await CartItem.findOne({ where: { cart_id: cart.cart_id, product_item_id } });
+    const existingItem = await CartItem.findOne({
+      where: {
+        cart_id: (cart as any).cart_id,
+        product_item_id,
+      },
+    });
+
     if (existingItem) {
-      existingItem.quantity += quantity;
+      (existingItem as any).quantity += quantity;
       await existingItem.save();
     } else {
-      await CartItem.create({ cart_id: cart.cart_id, product_item_id, quantity });
+      await CartItem.create({
+        cart_id: (cart as any).cart_id,
+        product_item_id,
+        quantity,
+      });
     }
 
-    return res.json({ message: "Product added to cart for re-buy", cart_id: cart.cart_id });
+    return res.json({
+      message: "Product added to cart for re-buy",
+      cart_id: (cart as any).cart_id,
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
   }
-};
+}; 

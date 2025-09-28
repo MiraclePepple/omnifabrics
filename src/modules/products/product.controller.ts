@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
+import { Op } from 'sequelize';
 import { Product } from "./product.model";
-import { ProductItem } from "../../models/productItemModel";
+import { ProductItem } from "../product_items/product_item.model";
 
 // Filter products based on price range, availability, and sort order
 export const filterProductsWithItems = async (req: Request, res: Response) => {
@@ -35,8 +36,9 @@ export const filterProductsWithItems = async (req: Request, res: Response) => {
         });
 
         // Filter by price if specified
-        if (minPrice) items = items.filter((i) => i.price >= Number(minPrice));
-        if (maxPrice) items = items.filter((i) => i.price <= Number(maxPrice));
+        if (minPrice) {items = items.filter((i: ProductItem) => i.price !== null && i.price >= Number(minPrice));}
+        if (maxPrice) {items = items.filter((i: ProductItem) => i.price !== null && i.price <= Number(maxPrice));}
+
 
         return {
           product_id: product.product_id,

@@ -1,6 +1,7 @@
 import { User } from '../users/user.model';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { UniqueConstraintError } from 'sequelize';
+import { generateToken } from '../../utils/jwt';
 
 // In-memory OTP store (email → { otp, expiresAt })
 const otpStore: Record<string, { otp: string; expiresAt: number }> = {};
@@ -10,7 +11,8 @@ export const signup = async (data: any) => {
   const hashed = await bcrypt.hash(data.password, 10);
 
   // user is active by default 
-  const u = await User.create({
+  try{ 
+    const u = await User.create({
     email: data.email,
     phone_number: data.phone_number,
     password: hashed,
@@ -20,31 +22,48 @@ export const signup = async (data: any) => {
   });
 
   return u;
+} catch (err: any) {
+  console.error('Signup error:', err); // will show the real message
+    if (err instanceof UniqueConstraintError) {
+      throw new Error('A user with this email already exists');
+    }
+    throw err;
+  }
 };
 
 // === LOGIN ===
 export const login = async (email: string, password: string) => {
   const user = await User.findOne({ where: { email } });
-  if (!user) throw new Error('Invalid credentials');
-
-  // check suspension
-  if ((user as any).is_suspended) {
-    throw new Error('Your account is suspended. Contact support.');
-  }
+  if (!user) {const err: any = new Error('Invalid email or password');
+    err.status = 401;
+    throw err;}
 
   const ok = await bcrypt.compare(password, (user as any).password);
-  if (!ok) throw new Error('Invalid credentials');
+  if (!ok) {const err: any = new Error('Invalid email or password');
+    err.status = 401;
+    throw err;}
 
-  const token = jwt.sign(
-    { userId: (user as any).id, email: (user as any).email },
-    process.env.JWT_SECRET as string,
-    { expiresIn: '1h' }
-  );
+  // check suspension and active user
+  if ((user as any).is_suspended) {
+    const err: any = new Error('Account is suspended. Please contact support.');
+    err.status = 403;
+    err.contact_admin = process.env.SUPPORT_EMAIL || 'support@example.com';
+    throw err;
+  }
+
+  if (!user.is_active) {
+    const err: any = new Error('Account is inactive. Please contact support.');
+    err.status = 403;
+    err.contact_admin = process.env.SUPPORT_EMAIL || 'support@example.com';
+    throw err;
+  }
+
+  const token = generateToken({ user_id: user.user_id });
 
   return { user, token };
 };
 
-// === SEND OTP (for forgot password) ===
+//SEND OTP (for forgot password)
 export const sendOtp = async (email: string) => {
   // check user exists
   const user = await User.findOne({ where: { email } });

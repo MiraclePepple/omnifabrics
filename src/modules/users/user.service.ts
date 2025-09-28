@@ -1,4 +1,3 @@
-// src/modules/user/user.service.ts
 import { User } from './user.model';
 
 export class UserService {

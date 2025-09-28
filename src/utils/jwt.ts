@@ -9,16 +9,27 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is not defined in your .env file');
 }
 
-//  Generate a token
+// Define a type for our JWT payload
+export interface TokenPayload {
+  user_id: number; // must match your User primary key
+  // you can add other fields if needed, e.g., role?: string
+}
+
+// Generate a JWT token
 export const generateToken = (
-  payload: object,
+  payload: TokenPayload,
   expiresIn: SignOptions['expiresIn'] = '1h'
 ): string => {
-  const options: SignOptions = { expiresIn };
-  return jwt.sign(payload, JWT_SECRET, options);
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
 };
 
-// Verify a token and return the decoded payload
-export const verifyToken = (token: string): string | JwtPayload => {
-  return jwt.verify(token, JWT_SECRET);
+// Verify a JWT token and return the decoded payload
+export const verifyToken = (token: string): TokenPayload => {
+  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+
+  if (!decoded || typeof decoded === 'string' || !('user_id' in decoded)) {
+    throw new Error('Invalid token payload');
+  }
+
+  return decoded as TokenPayload;
 };

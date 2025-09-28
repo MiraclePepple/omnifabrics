@@ -30,6 +30,7 @@ import { Notification } from '../modules/notifications/notification.model';
 import { Admin } from '../modules/admin/admin.model';
 import { Permission } from '../modules/permissions/permission.model';
 import { AdminPermission } from '../modules/admin_permission/admin_permission.model';
+import { Card } from '../modules/card/card.model';
 
 // Associations matching your ERD:
 
@@ -105,8 +106,12 @@ Notification.belongsTo(User, { foreignKey: 'user_id' });
 Admin.belongsToMany(Permission, { through: AdminPermission, foreignKey: 'admin_id' });
 Permission.belongsToMany(Admin, { through: AdminPermission, foreignKey: 'permission_id' });
 
+// Card
+User.hasMany(Card, { foreignKey: 'user_id' });
+Card.belongsTo(User, { foreignKey: 'user_id' });
+
 export default {
   User, Store, Category, Product, ProductItem, Cart, CartItem,
   Wishlist, Rating, Order, OrderItem, Wallet, Transaction, Payment,
-  Notification, Admin, Permission, AdminPermission
+  Notification, Admin, Permission, AdminPermission, Card
 };

@@ -2,8 +2,12 @@ import { Request, Response } from 'express';
 import * as svc from './auth.service';
 
 export const signup = async (req:Request, res:Response) => {
-  const u = await svc.signup(req.body);
+  try{ 
+    const u = await svc.signup(req.body);
   res.status(201).json({message: 'User registered successfully', u});
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
 };
 
 export const login = async (req:Request, res:Response) => {
@@ -11,7 +15,12 @@ export const login = async (req:Request, res:Response) => {
     const r = await svc.login(req.body.email, req.body.password);
     res.json({ message: 'Login successful', r});
   } catch (err:any) {
-    res.status(400).json({ error: err.message });
+   const status = err.status || 400;
+    const body:any = { error: err.message };
+    if (err.contact_admin) {
+      body.contact_admin = err.contact_admin;
+    }
+    res.status(status).json(body);
   }
 };
 

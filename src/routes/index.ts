@@ -9,6 +9,7 @@ import paymentRoutes from '../modules/payment/payment.routes';
 import notificationRoutes from '../modules/notifications/notification.routes';
 import adminRoutes from '../modules/admin/admin.routes';
 import authRoutes from '../modules/auth/auth.routes';
+import userRoutes from '../modules/users/user.route';
 // import other module route files similarly
 
 const router = Router();
@@ -21,6 +22,7 @@ router.use('/wallets', walletRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admins', adminRoutes);
+router.use('/user', userRoutes);
 
 
 

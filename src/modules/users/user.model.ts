@@ -21,6 +21,8 @@ export class User extends Model {
   declare updated_at: Date;
   declare deleted_at: Date | null;
   declare gender: "Male" | "Female";
+  id!: number; // using definite assignment
+
 }
 
 User.init(
@@ -34,7 +36,7 @@ User.init(
     state: { type: DataTypes.STRING(100) },
     city: { type: DataTypes.STRING(100) },
     country: { type: DataTypes.STRING(100) },
-    address: { type: DataTypes.TEXT },
+    address: { type: DataTypes.TEXT, allowNull:true },
     is_seller: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
     is_suspended: { type: DataTypes.BOOLEAN, defaultValue: false },

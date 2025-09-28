@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import * as ctrl from './notification.controller';
-import { auth } from '../auth/auth.middleware';
+import { authenticate } from '../../middlewares/validate.middleware';
 
 const router = Router();
-router.post('/', auth, ctrl.createNote); // admin broadcast
-router.get('/', auth, ctrl.listForUser);
-router.post('/:id/read', auth, ctrl.markRead);
+router.post('/', authenticate, ctrl.createNote); // admin broadcast
+router.get('/', authenticate, ctrl.listForUser);
+router.post('/:id/read', authenticate, ctrl.markRead);
 
 export default router;
