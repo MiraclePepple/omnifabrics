@@ -1,104 +1,97 @@
 import { User } from '../users/user.model';
+import { Otp } from './otp.model';
+import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs';
-import { UniqueConstraintError } from 'sequelize';
-import { generateToken } from '../../utils/jwt';
+import jwt from 'jsonwebtoken';
 
-// In-memory OTP store (email → { otp, expiresAt })
-const otpStore: Record<string, { otp: string; expiresAt: number }> = {};
+const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const OTP_EXPIRY_MINUTES = 10;
 
-// === SIGNUP ===
-export const signup = async (data: any) => {
-  const hashed = await bcrypt.hash(data.password, 10);
+export class AuthService {
+  // Signup a new user
+  static async signup(email: string, phone_number: string, password: string) {
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) throw new Error('Email already exists');
 
-  // user is active by default 
-  try{ 
-    const u = await User.create({
-    email: data.email,
-    phone_number: data.phone_number,
-    password: hashed,
-    is_active: true,   
-    is_suspended: false,  
-    created_at: new Date()
-  });
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  return u;
-} catch (err: any) {
-  console.error('Signup error:', err); // will show the real message
-    if (err instanceof UniqueConstraintError) {
-      throw new Error('A user with this email already exists');
-    }
-    throw err;
-  }
-};
+    const user = await User.create({
+      email,
+      phone_number,
+      password: hashedPassword,
+      is_active: true,
+      is_suspended: false,
+      is_seller: false, // default
+    });
 
-// === LOGIN ===
-export const login = async (email: string, password: string) => {
-  const user = await User.findOne({ where: { email } });
-  if (!user) {const err: any = new Error('Invalid email or password');
-    err.status = 401;
-    throw err;}
-
-  const ok = await bcrypt.compare(password, (user as any).password);
-  if (!ok) {const err: any = new Error('Invalid email or password');
-    err.status = 401;
-    throw err;}
-
-  // check suspension and active user
-  if ((user as any).is_suspended) {
-    const err: any = new Error('Account is suspended. Please contact support.');
-    err.status = 403;
-    err.contact_admin = process.env.SUPPORT_EMAIL || 'support@example.com';
-    throw err;
+    return user;
   }
 
-  if (!user.is_active) {
-    const err: any = new Error('Account is inactive. Please contact support.');
-    err.status = 403;
-    err.contact_admin = process.env.SUPPORT_EMAIL || 'support@example.com';
-    throw err;
+  // Complete user profile
+  static async completeProfile(user_id: number, data: any) {
+    const user = await User.findByPk(user_id);
+    if (!user) throw new Error('User not found');
+
+    await user.update({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      gender: data.gender,
+      state: data.state,
+      city: data.city,
+      country: data.country,
+      address: data.address
+    });
+
+    return user;
   }
 
-  const token = generateToken({ user_id: user.user_id });
+  // Login (buyers and sellers use the same route)
+  static async login(email: string, password: string) {
+    const user = await User.findOne({ where: { email } });
+    if (!user) throw new Error('Invalid credentials');
+    if (!user.is_active || user.is_suspended) throw new Error('Account suspended/disabled');
 
-  return { user, token };
-};
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) throw new Error('Invalid credentials');
 
-//SEND OTP (for forgot password)
-export const sendOtp = async (email: string) => {
-  // check user exists
-  const user = await User.findOne({ where: { email } });
-  if (!user) throw new Error('No account found with this email');
+    // Include is_seller in token so front-end knows user type
+    const token = jwt.sign(
+      { user_id: user.user_id, email: user.email, is_seller: user.is_seller },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await user.update({ last_login_at: new Date() });
 
-  // store OTP in memory with 10 min expiry
-  otpStore[email] = { otp, expiresAt: Date.now() + 10 * 60 * 1000 };
-
-  // send email (or SMS) here
-  console.log(`OTP for password reset ${email}: ${otp}`);
-
-  return otp; // return for debugging / tests only
-};
-
-// === VERIFY OTP (for forgot password) ===
-export const verifyOtp = async (email: string, otp: string) => {
-  const entry = otpStore[email];
-  if (!entry) throw new Error('OTP expired or not found');
-  if (entry.expiresAt < Date.now()) {
-    delete otpStore[email];
-    throw new Error('OTP expired');
+    return { user, token };
   }
-  if (entry.otp !== otp) throw new Error('Invalid OTP');
 
-  // delete OTP after use
-  delete otpStore[email];
+  // Send OTP (password recovery, store verification)
+  static async sendOtp(user_id: number, type: 'password_recovery' | 'store_verification') {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires_at = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-  return { message: 'OTP verified successfully. You can now reset your password.' };
-};
+    const otp = await Otp.create({ user_id, code, type, expires_at });
+    return otp;
+  }
 
-// === RESET PASSWORD AFTER OTP ===
-export const resetPassword = async (email: string, newPassword: string) => {
-  const hashed = await bcrypt.hash(newPassword, 10);
-  await User.update({ password: hashed }, { where: { email } });
-  return { message: 'Password reset successfully' };
-};
+  static async verifyOtp(user_id: number, code: string, type: 'password_recovery' | 'store_verification') {
+    const otp = await Otp.findOne({
+      where: { user_id, code, type, used: false, expires_at: { [Op.gt]: new Date() } }
+    });
+    if (!otp) throw new Error('Invalid or expired OTP');
+
+    await otp.update({ used: true });
+    return true;
+  }
+
+  static async resetPassword(user_id: number, newPassword: string) {
+    const user = await User.findByPk(user_id);
+    if (!user) throw new Error('User not found');
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await user.update({ password: hashedPassword });
+
+    return user;
+  }
+}

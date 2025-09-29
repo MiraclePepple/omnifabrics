@@ -1,55 +1,74 @@
 import { Request, Response } from 'express';
-import * as svc from './auth.service';
+import { AuthService } from './auth.service';
 
-export const signup = async (req:Request, res:Response) => {
-  try{ 
-    const u = await svc.signup(req.body);
-  res.status(201).json({message: 'User registered successfully', u});
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-};
-
-export const login = async (req:Request, res:Response) => {
-  try {
-    const r = await svc.login(req.body.email, req.body.password);
-    res.json({ message: 'Login successful', r});
-  } catch (err:any) {
-   const status = err.status || 400;
-    const body:any = { error: err.message };
-    if (err.contact_admin) {
-      body.contact_admin = err.contact_admin;
+export class AuthController {
+  static async signup(req: Request, res: Response) {
+    try {
+      const { email, phone_number, password } = req.body;
+      const user = await AuthService.signup(email, phone_number, password);
+      return res.status(201).json({ message: 'User created successfully', user_id: user.user_id });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
     }
-    res.status(status).json(body);
   }
-};
 
-export const sendOtp = async (req:Request, res:Response) => {
-  try{
-    const { email } = req.body;
-    const otp = await svc.sendOtp(email);
-    res.json({ message: 'OTP sent to your email', otp: process.env.NODE_ENV === 'development' ? otp : 'sent' });
-} catch (err:any) {
-    res.status(500).json({ error: err.message });
+  static async completeProfile(req: Request, res: Response) {
+    try {
+      const { user_id, profile } = req.body; // profile = { first_name, last_name, gender, ... }
+      const user = await AuthService.completeProfile(user_id, profile);
+      return res.json({ message: 'Profile completed', user });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
+  static async login(req: Request, res: Response) {
+    try {
+      const { email, password } = req.body;
+      const { user, token } = await AuthService.login(email, password);
+      return res.json({ message: 'Login successful', user, token });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
+  static async sendOtp(req: Request, res: Response) {
+    try {
+      const { user_id, type } = req.body;
+      const otp = await AuthService.sendOtp(user_id, type);
+      return res.json({ message: 'OTP sent', otp_code: otp.code });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
+  static async verifyOtp(req: Request, res: Response) {
+    try {
+      const { user_id, code, type } = req.body;
+      await AuthService.verifyOtp(user_id, code, type);
+      return res.json({ message: 'OTP verified' });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
+  static async resetPassword(req: Request, res: Response) {
+    try {
+      const { user_id, newPassword } = req.body;
+      const user = await AuthService.resetPassword(user_id, newPassword);
+      return res.json({ message: 'Password reset successful', user });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
+  static async createStore(req: Request, res: Response) {
+    try {
+      const { user_id, storeData } = req.body;
+      const store = await AuthService.createStore(user_id, storeData);
+      return res.status(201).json({ message: 'Store created', store });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   }
 }
-
-export const verifyOtp = async (req: Request, res: Response) => {
-  try {
-    const { email, otp } = req.body;
-    const result = await svc.verifyOtp(email, otp);
-    res.json(result);
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-}
-
-export const resetPassword = async (req: Request, res: Response) => {
-  try {
-    const { email, newPassword } = req.body;
-    const result = await svc.resetPassword(email, newPassword);
-    res.status(200).json(result);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};

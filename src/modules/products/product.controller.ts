@@ -141,3 +141,77 @@ export const searchProducts = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+// Create a new product
+export const createProduct = async (req: Request, res: Response) => {
+  try {
+    const product = await Product.create({
+      ...req.body,
+      user_id: (req as any).user.user_id, // seller id from JWT
+    });
+    res.status(201).json({ message: "Product created", product });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Update a product (requires admin approval after update)
+export const updateProduct = async (req: Request, res: Response) => {
+  try {
+    const { product_id } = req.params;
+    const product = await Product.findByPk(product_id);
+
+    if (!product) return res.status(404).json({ error: "Product not found" });
+    if (product.user_id !== (req as any).user.user_id)
+      return res.status(403).json({ error: "Forbidden" });
+
+    await product.update({ ...req.body, is_active: false }); // hide until admin approves
+    res.json({ message: "Product updated and hidden until approval", product });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Disable a product (manual hide)
+export const disableProduct = async (req: Request, res: Response) => {
+  try {
+    const { product_id } = req.params;
+    const product = await Product.findByPk(product_id);
+
+    if (!product) return res.status(404).json({ error: "Product not found" });
+    if (product.user_id !== (req as any).user.user_id)
+      return res.status(403).json({ error: "Forbidden" });
+
+    await product.update({ is_active: false });
+    res.json({ message: "Product disabled", product });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Delete a product
+export const deleteProduct = async (req: Request, res: Response) => {
+  try {
+    const { product_id } = req.params;
+    const product = await Product.findByPk(product_id);
+
+    if (!product) return res.status(404).json({ error: "Product not found" });
+    if (product.user_id !== (req as any).user.user_id)
+      return res.status(403).json({ error: "Forbidden" });
+
+    await product.destroy();
+    res.json({ message: "Product deleted" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// List all products for a seller
+export const listProducts = async (req: Request, res: Response) => {
+  try {
+    const products = await Product.findAll({ where: { user_id: (req as any).user.user_id } });
+    res.json({ products });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

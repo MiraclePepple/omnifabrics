@@ -1,32 +1,28 @@
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
+export async function sendOTPEmail(to: string, code: string) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,       // your Gmail address
+      pass: process.env.EMAIL_APP_PASS,   // App password
+    },
+  });
 
-if (!EMAIL_USER || !EMAIL_PASS) {
-  throw new Error("EMAIL_USER or EMAIL_PASS is not set in .env");
-}
-
-// Create transporter
-const transporter = nodemailer.createTransport({
-  service: "gmail", // you can change this depending on your email provider
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
-  },
-});
-
-// Send email function
-export const sendEmail = async (to: string, subject: string, text: string) => {
   const mailOptions = {
-    from: EMAIL_USER,
+    from: `"Omnifabrics" <${process.env.GMAIL_USER}>`,
     to,
-    subject,
-    text,
+    subject: 'Your OTP for Store Creation',
+    html: `
+      <p>Hi,</p>
+      <p>Your OTP for creating a store is: <b>${code}</b></p>
+      <p>This OTP will expire in 10 minutes.</p>
+    `,
   };
 
   await transporter.sendMail(mailOptions);
-};
+  console.log(`OTP ${code} sent to ${to}`);
+}

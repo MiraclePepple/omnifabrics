@@ -46,8 +46,3 @@ Product.init(
     timestamps: false,
   }
 );
-
-// In productModel.ts
-//Product.belongsTo(Category, { as: "category", foreignKey: "category_id" });
-//Product.belongsTo(Store, { as: "store", foreignKey: "store_id" });
-//Product.hasMany(ProductItem, { as: "product_items", foreignKey: "product_id" });

@@ -1,16 +1,14 @@
 import { Router } from 'express';
-import * as ctrl from './auth.controller';
-import { validate } from '../../middlewares/validate.middleware';
-import { signupSchema, loginSchema, sendOtpSchema, resetPasswordSchema } from './auth.validation';
+import { AuthController } from './auth.controller';
 
 const router = Router();
-router.post('/signup', validate(signupSchema), ctrl.signup);
-router.post('/login', validate(loginSchema), ctrl.login);
-router.post('/password/forgot', validate(sendOtpSchema), ctrl.sendOtp),
-router.post('/password/verify-otp', ctrl.verifyOtp),
-router.post('/password/reset', validate(resetPasswordSchema), ctrl.resetPassword)
+
+router.post('/signup', AuthController.signup);
+router.post('/complete-profile', AuthController.completeProfile);
+router.post('/login', AuthController.login);
+router.post('/send-otp', AuthController.sendOtp);
+router.post('/verify-otp', AuthController.verifyOtp);
+router.post('/reset-password', AuthController.resetPassword);
+
 
 export default router;
-
-
-

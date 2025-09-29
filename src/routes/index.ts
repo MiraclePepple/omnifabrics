@@ -10,6 +10,8 @@ import notificationRoutes from '../modules/notifications/notification.routes';
 import adminRoutes from '../modules/admin/admin.routes';
 import authRoutes from '../modules/auth/auth.routes';
 import userRoutes from '../modules/users/user.route';
+import productRoutes from '../modules/products/product.route';
+import storeRoutes from '../modules/store/store.routes';
 // import other module route files similarly
 
 const router = Router();
@@ -23,6 +25,8 @@ router.use('/payments', paymentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admins', adminRoutes);
 router.use('/user', userRoutes);
+router.use('/product', productRoutes);
+router.use('/store', storeRoutes)
 
 
 

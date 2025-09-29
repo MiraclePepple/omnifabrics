@@ -1,62 +1,50 @@
 import { Request, Response } from 'express';
 import { UserService } from './user.service';
-import { completeProfileSchema } from './user.validation';
 
 export class UserController {
-  static async completeProfile(req: Request, res: Response) {
-    const { error } = completeProfileSchema.validate(req.body);
-    if (error) return res.status(400).json({ error: error.details[0].message });
-
+  // Get user profile
+  static async getProfile(req: Request, res: Response) {
     try {
-      if (!req.user) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      const updatedUser = await UserService.completeProfile(req.user.user_id, req.body);
-
-      return res.status(200).json({
-        message: 'Profile completed successfully.',
-        user: updatedUser,
-      });
+      const user_id = (req as any).user.user_id;
+      const user = await UserService.getProfile(user_id);
+      return res.json({ message: 'Profile fetched successfully', user });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(404).json({ error: err.message });
     }
   }
 
-  static async getProfile(req: Request, res: Response) {
+  // Update profile/settings
+  static async updateProfile(req: Request, res: Response) {
     try {
-      if (!req.user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Now fully typed
-      const {
-        user_id,
-        first_name,
-        last_name,
-        email,
-        phone_number,
-        is_active,
-        is_suspended,
-        created_at
-      } = req.user;
-
-      return res.json({
-        message: "Profile fetched successfully",
-        user: {
-          user_id,
-          first_name,
-          last_name,
-          email,
-          phone_number,
-          is_active,
-          is_suspended,
-          created_at,
-        },
-      });
+      const user_id = (req as any).user.user_id;
+      const data = req.body;
+      const user = await UserService.updateProfile(user_id, data);
+      return res.json({ message: 'Profile updated successfully', user });
     } catch (err: any) {
-      console.error(err);
-      return res.status(500).json({ message: "Server error" });
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
+  // Change password
+  static async changePassword(req: Request, res: Response) {
+    try {
+      const user_id = (req as any).user.user_id;
+      const { oldPassword, newPassword } = req.body;
+      const result = await UserService.changePassword(user_id, oldPassword, newPassword);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
+  // Reset password (via OTP)
+  static async resetPassword(req: Request, res: Response) {
+    try {
+      const { user_id, newPassword } = req.body;
+      const result = await UserService.resetPassword(user_id, newPassword);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
     }
   }
 }
