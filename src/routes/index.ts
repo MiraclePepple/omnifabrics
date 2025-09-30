@@ -12,6 +12,7 @@ import authRoutes from '../modules/auth/auth.routes';
 import userRoutes from '../modules/users/user.route';
 import productRoutes from '../modules/products/product.route';
 import storeRoutes from '../modules/store/store.routes';
+import orderRoutes from '../modules/orders/order.route'
 // import other module route files similarly
 
 const router = Router();
@@ -27,6 +28,7 @@ router.use('/admins', adminRoutes);
 router.use('/user', userRoutes);
 router.use('/product', productRoutes);
 router.use('/store', storeRoutes)
+router.use('/order', orderRoutes)
 
 
 

@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import * as ctrl from './wishlist.controller';
-import { authenticate, validate } from '../../middlewares/validate.middleware';
-import { addWishlistSchema } from './wishlist.validation';
-
+import { WishlistController } from './wishlist.controller';
+import { authenticate } from '../../middlewares/validate.middleware';
 
 const router = Router();
-router.post('/', authenticate, validate(addWishlistSchema), ctrl.add);
-router.get('/', authenticate, ctrl.list);
-router.delete('/:wishId', authenticate, ctrl.remove);
+
+router.post('/add-to-wishlist', authenticate, WishlistController.add);
+router.get('/my-wishlist', authenticate, WishlistController.list);
+router.delete('/remove/:wishId', authenticate, WishlistController.remove);
+router.post('/move-to-cart/:wishId', authenticate, WishlistController.moveToCart);
 
 export default router;

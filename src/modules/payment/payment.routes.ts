@@ -1,8 +1,11 @@
 import { Router } from 'express';
-import { payForProduct } from './payment.controller';
+import { PaymentController } from './payment.controller';
+import { authenticate } from '../../middlewares/validate.middleware';
 
 const router = Router();
 
-router.post('/pay', payForProduct);
+router.post('/pay', authenticate, PaymentController.payForOrder);
+router.post('/webhook', PaymentController.webhook); // flutterwave calls this (no auth)
+router.get('/verify', PaymentController.verifyRedirect); // optional redirect verify
 
 export default router;

@@ -60,7 +60,7 @@ OrderItem.init(
   },
   {
     sequelize,
-    tableName: "order_items",
+    tableName: "order_item",
     timestamps: false,
   }
 );

@@ -1,19 +1,17 @@
-import { Router } from "express";
-import {
-  createProduct,
-  updateProduct,
-  disableProduct,
-  deleteProduct,
-  listProducts,
-} from "./product.controller";
-import { authenticate } from "../../middlewares/validate.middleware";
+import { Router } from 'express';
+import { ProductController } from './product.controller';
+import { authenticate } from '../../middlewares/validate.middleware';
 
 const router = Router();
 
-router.post("/create-product", authenticate, createProduct);
-router.put("/:product_id", authenticate, updateProduct);
-router.patch("/disable/:product_id", authenticate, disableProduct);
-router.delete("/:product_id", authenticate, deleteProduct);
-router.get("/", authenticate, listProducts);
+// Seller-only actions
+router.post('/create-product', authenticate, ProductController.createProduct);
+router.put('/update-product/:id', authenticate, ProductController.updateProduct);
+router.patch('/disable-product/:id', authenticate, ProductController.disableProduct);
+router.delete('/delete-product/:id', authenticate, ProductController.deleteProduct);
+router.get('/my-products', authenticate, ProductController.listSellerProducts);
+
+// Buyer actions
+router.get('/search', ProductController.searchProducts);
 
 export default router;

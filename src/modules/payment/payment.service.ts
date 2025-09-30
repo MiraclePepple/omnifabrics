@@ -1,171 +1,187 @@
-// src/modules/payment/payment.service.ts
-import { User } from '../users/user.model';
+import axios from 'axios';
+import sequelize from '../../config/db';
+import { Order } from '../orders/order.model';
 import { Product } from '../products/product.model';
-import { Cart, CartItem } from '../cart/cart.model';
-//import Flutterwave from 'flutterwave-node-v3';
-import { Card } from '../card/card.model';
+import { ProductItem } from '../product_items/product_item.model';
+import { Transaction } from './transaction.model';
+import Card from '../card/card.model';
 
-const Flutterwave: any = require('flutterwave-node-v3');
-const flw = new Flutterwave(process.env.FLW_PUBLIC_KEY!, process.env.FLW_SECRET_KEY!);
+const FLW_SECRET = process.env.FLW_SECRET_KEY!;
+const FLW_BASE = process.env.FLW_BASE_URL || 'https://api.flutterwave.com/v3';
+const APP_BASE = process.env.APP_BASE_URL || 'http://localhost:3000';
 
-interface CardInfo {
-  useSaved: boolean;
-  savedCardId?: string; // id of saved card in DB
-  cardNumber?: string;
-  expiry?: string; // MM/YY
-  cvv?: string;
-  saveNew?: boolean;
-}
-
-interface DeliveryInfo {
-  address: string;
-  phone: string;
-}
-
-interface PayPayload {
-  userId: number;
-  productId?: number;
-  fromCart?: boolean;
-  card: CardInfo;
-  delivery: DeliveryInfo;
-}
-
-export const payForProduct = async (data: PayPayload) => {
-  // 1. Fetch user
-  const user = await User.findByPk(data.userId);
-  if (!user) throw new Error('User not found');
-
-  // 2. Get products
-  let products: any[] = [];
-  if (data.fromCart) {
-    const cartItems = await CartItem.findAll({
-      where: { cart_id: (await Cart.findOne({ where: { user_id: data.userId } }))?.get('cart_id') as any },
+export class PaymentService {
+  // 1) initialize payment with Flutterwave and create Transaction (pending)
+  static async initializePayment(user_id: number, order: Order | null, amount: number, currency = 'NGN', meta: any = {}, use_saved_card: any) {
+    // create pending transaction record
+    const tx = await Transaction.create({
+      order_id: order ? order.getDataValue('order_id') : null,
+      user_id,
+      amount,
+      currency,
+      status: 'pending'
     });
 
-    if (!cartItems.length) throw new Error('Cart is empty');
+    // build payload for Flutterwave
+    const payload = {
+      tx_ref: `omnifabrics_${tx.getDataValue('transaction_id')}_${Date.now()}`,
+      amount: Number(amount).toFixed(2),
+      currency,
+      redirect_url: `${APP_BASE}/payment/verify`, // optional endpoint for redirect after pay
+      customer: {
+        email: meta.email,
+        phonenumber: meta.phone_number,
+        name: meta.name || 'Customer'
+      },
+      meta: {
+        internal_transaction_id: tx.getDataValue('transaction_id'),
+        ...meta
+      },
+      customizations: {
+        title: 'Omnifabrics Payment',
+        description: 'Payment for order on Omnifabrics'
+      }
+    };
 
-    for (const item of cartItems) {
-      const p = await Product.findByPk(item.get('product_id') as any);
-      if (p) products.push(p);
+    // call flutterwave initialize payment
+    const resp = await axios.post(`${FLW_BASE}/payments`, payload, {
+      headers: {
+        Authorization: `Bearer ${FLW_SECRET}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = resp.data;
+    if (data.status !== 'success') {
+      // update tx as failed
+      await tx.update({ status: 'failed', provider_data: data });
+      throw new Error('Failed to initialize payment');
     }
-  } else if (data.productId) {
-    const p = await Product.findByPk(data.productId);
-    if (!p) throw new Error('Product not found');
-    products = [p];
-  } else {
-    throw new Error('No product or cart selected');
-  }
 
-  // 3. Total amount
-  const totalAmount = products.reduce((sum, p) => sum + Number(p.get('price') ?? 0), 0);
+    // Save provider reference & provider_data
+    await tx.update({
+      provider_ref: data.data?.id || data.data?.tx_ref || null,
+      provider_data: data,
+      status: 'pending'
+    });
 
-  // 4. Delivery info – update user delivery if needed
-  if (data.delivery.address || data.delivery.phone) {
-    user.address = data.delivery.address || user.address;
-    user.phone_number = data.delivery.phone || user.phone_number;
-    await user.save();
-  }
-
-  // 5. Card details (this is simplified – in reality you'd tokenize cards)
-  let cardPayload: any;
-  if (data.card.useSaved) {
-  const savedCard = await Card.findOne({
-    where: { card_id: data.card.savedCardId, user_id: data.userId },
-  });
-  if (!savedCard) throw new Error('Saved card not found');
-
-  const txRef = 'txn_' + Date.now();
-  // charge using tokenized card:
-  const chargeResponse = await flw.Tokenized.charge({
-    token: savedCard.card_token,
-    currency: 'NGN',
-    amount: totalAmount,
-    email: user.email,
-    tx_ref: txRef,
-  });
-
-  if (chargeResponse.status !== 'success') {
-    throw new Error('Payment failed: ' + chargeResponse.message);
-  }
-
-  return {
-    message: 'Payment successful (saved card)',
-    transaction: {
-      tx_ref: txRef,
-      flutterwave_id: chargeResponse.data.id,
-      status: chargeResponse.data.status,
-      charged_amount: chargeResponse.data.amount,
-    },
-    products: products.map((p) => ({
-      id: p.get('product_id'),
-      name: p.get('product_name'),
-    })),
-    delivery: {
-      address: user.address,
-      phone: user.phone_number,
-    },
-  };
-}
-else {
-    if (!data.card.expiry) {
-      throw new Error('Card expiry is not provided');
-    }
-    cardPayload = {
-      card_number: data.card.cardNumber,
-      cvv: data.card.cvv,
-      expiry_month: data.card.expiry.split('/')[0],
-      expiry_year: data.card.expiry.split('/')[1],
+    // Return link for client to pay (checkout_url)
+    return {
+      transaction: tx,
+      payment_link: data.data?.link || data.data?.checkout_url || data.data?.flw_ref || null,
+      provider_response: data
     };
   }
 
-  // 6. Charge with Flutterwave
-  const txRef = 'txn_' + Date.now();
+  // 2) verify transaction with Flutterwave (used in webhook or redirect verify)
+  static async verifyTransaction(provider_txn_id_or_tx_ref: string) {
+    // Flutterwave provides verify endpoint: /transactions/{id}/verify
+    // we will try both by id and by tx_ref.
+    try {
+      // Try verify by transaction id
+      let resp;
+      try {
+        resp = await axios.get(`${FLW_BASE}/transactions/${provider_txn_id_or_tx_ref}/verify`, {
+          headers: { Authorization: `Bearer ${FLW_SECRET}` }
+        });
+      } catch (err) {
+        // fallback: search by tx_ref (some implementations)
+        resp = await axios.get(`${FLW_BASE}/transactions/verify_by_reference?tx_ref=${provider_txn_id_or_tx_ref}`, {
+          headers: { Authorization: `Bearer ${FLW_SECRET}` }
+        });
+      }
 
-  const chargeResponse = await flw.Charge.card({
-    card_number: cardPayload.card_number,
-    cvv: cardPayload.cvv,
-    expiry_month: cardPayload.expiry_month,
-    expiry_year: cardPayload.expiry_year,
-    currency: 'NGN',
-    amount: totalAmount,
-    email: user.email,
-    tx_ref: txRef,
-  });
-
-  if (chargeResponse.status !== 'success') {
-    throw new Error('Payment failed: ' + chargeResponse.message);
+      return resp.data;
+    } catch (err: any) {
+      throw new Error('Failed to verify transaction with Flutterwave');
+    }
   }
 
-  // optionally save card details here
-  if (data.card.saveNew && chargeResponse.data.card?.token) {
-    if (!data.card.expiry) {
-      throw new Error('Card expiry is not provided');
+  // 3) finalize transaction: called after verifying provider says success
+  //    - set transaction to paid
+  //    - set order.payment_status = 'paid'
+  //    - decrement stock for product variants inside a DB transaction
+  static async finalizePayment(providerData: any) {
+    // providerData should include meta.internal_transaction_id or id
+    const providerTx = providerData.data || providerData; // shape may vary
+    const internalTxId = providerData.data?.meta?.internal_transaction_id || providerData.meta?.internal_transaction_id || providerData.data?.id;
+    // Try to locate Transaction record
+    let tx: any = null;
+    if (internalTxId) {
+      tx = await Transaction.findByPk(internalTxId);
     }
-  await Card.create({
-    user_id: data.userId,
-    card_token: chargeResponse.data.card.token, // Flutterwave token
-    last4: chargeResponse.data.card.last_4digits,
-    card_type: chargeResponse.data.card.type,
-    expiry_month: data.card.expiry.split('/')[0],
-    expiry_year: data.card.expiry.split('/')[1],
-  });
-}
 
-  return {
-    message: 'Payment successful',
-    transaction: {
-      tx_ref: txRef,
-      flutterwave_id: chargeResponse.data.id,
-      status: chargeResponse.data.status,
-      charged_amount: chargeResponse.data.amount,
-    },
-    products: products.map((p) => ({
-      id: p.get('product_id'),
-      name: p.get('product_name'),
-    })),
-    delivery: {
-      address: user.address,
-      phone: user.phone_number,
-    },
-  };
-};
+    // Fallback: search by provider_ref
+    if (!tx) {
+      tx = await Transaction.findOne({ where: { provider_ref: providerTx.id } });
+    }
+
+    if (!tx) throw new Error('Transaction record not found');
+
+    // double-check status via flutterwave verify for safety
+    const verifyResp = await this.verifyTransaction(providerTx.id || providerData.data?.id || providerData.tx_ref || providerTx.id);
+
+    if (!verifyResp || verifyResp.status !== 'success') {
+      await tx.update({ status: 'failed', provider_data: providerData });
+      throw new Error('Payment verification failed');
+    }
+
+    // At this point payment is successful, proceed to finalize order & decrement stock
+    const t = await sequelize.transaction();
+    try {
+      // mark transaction paid
+      await tx.update({ status: 'paid', provider_data: providerData, provider_ref: providerTx.id }, { transaction: t });
+
+      // If tx has order_id, update order
+      const orderId = tx.getDataValue('order_id');
+      if (orderId) {
+        const order = await Order.findByPk(orderId, { transaction: t });
+        if (!order) throw new Error('Order not found for this transaction');
+
+        // Parse products array from order
+        const products: any[] = order.getDataValue('products') || [];
+
+        // For each product => decrement ProductItem quantity (if using product_item), else skip or adjust product-level quantity
+        for (const p of products) {
+          // p should include product_id, product_item_id (optional), quantity, price
+          if (p.product_item_id) {
+            const variant = await ProductItem.findByPk(p.product_item_id, { transaction: t, lock: t.LOCK.UPDATE });
+            if (!variant) throw new Error(`Product variant ${p.product_item_id} not found`);
+            // Check quantity
+            if (variant.quantity !== null && variant.quantity < p.quantity) {
+              throw new Error(`Insufficient stock for variant ${p.product_item_id}`);
+            }
+            // Decrement
+            if (variant.quantity !== null) {
+              await variant.update({ quantity: variant.quantity - p.quantity, is_available: (variant.quantity - p.quantity) > 0 }, { transaction: t });
+            } else {
+              // variant quantity null -> keep as available
+            }
+          } else {
+            // if no variant, optionally decrement a product-level stock field if you have one
+            const product = await Product.findByPk(p.product_id, { transaction: t, lock: t.LOCK.UPDATE });
+            if (!product) throw new Error(`Product ${p.product_id} not found`);
+            // If your product model has quantity, decrement it. If not, skip.
+            if ((product as any).quantity !== undefined) {
+              const newQty = (product as any).quantity - p.quantity;
+              await product.update({ quantity: newQty, is_active: newQty > 0 }, { transaction: t });
+            }
+          }
+        }
+
+        // finalize order: set payment_status = paid, tracking_status remains pending or processing
+        await order.update({ payment_status: 'paid', tracking_status: 'processing' }, { transaction: t });
+
+        // (Optional) credit seller wallet / create payouts or transaction logs per product/store
+      }
+
+      await t.commit();
+      return { success: true, tx };
+    } catch (err) {
+      await t.rollback();
+      // mark tx failed
+      await tx.update({ status: 'failed', provider_data: providerData }).catch(() => {});
+      throw err;
+    }
+  }
+}

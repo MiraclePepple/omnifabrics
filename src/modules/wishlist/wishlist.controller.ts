@@ -1,18 +1,48 @@
 import { Request, Response } from 'express';
-import * as service from './wishlist.service';
+import { WishlistService } from './wishlist.service';
 
-export const add = async (req:Request, res:Response) => {
-  const userId = (req.user!).user_id;
-  const w = await service.addToWishlist(userId, req.body);
-  res.status(201).json(w);
-};
+export class WishlistController {
+  static async add(req: Request, res: Response) {
+    try {
+      const user_id = (req as any).user.user_id;
+      const { product_id, product_item_id } = req.body;
+      const wish = await WishlistService.addToWishlist(user_id, product_id, product_item_id);
+      return res.status(201).json(wish);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
 
-export const list = async (req:Request, res:Response) => {
-  const items = await service.listWishlist(req.user!.user_id);
-  res.json(items);
-};
+  static async remove(req: Request, res: Response) {
+    try {
+      const user_id = (req as any).user.user_id;
+      const wish_id = Number(req.params.wishId);
+      const result = await WishlistService.removeFromWishlist(user_id, wish_id);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
 
-export const remove = async (req:Request, res:Response) => {
-  await service.removeFromWishlist(Number(req.params.wishId), req.user!.user_id);
-  res.json({ message: 'removed' });
-};
+  static async list(req: Request, res: Response) {
+    try {
+      const user_id = (req as any).user.user_id;
+      const items = await WishlistService.listWishlist(user_id);
+      return res.json(items);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
+  static async moveToCart(req: Request, res: Response) {
+    try {
+      const user_id = (req as any).user.user_id;
+      const wish_id = Number(req.params.wishId);
+      const { quantity } = req.body;
+      const result = await WishlistService.moveToCart(user_id, wish_id, quantity ?? 1);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+}

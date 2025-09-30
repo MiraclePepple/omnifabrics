@@ -23,10 +23,10 @@ export class Product extends Model {
 
 Product.init(
   {
-    product_id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-    category_id: { type: DataTypes.BIGINT, allowNull: false },
-    store_id: { type: DataTypes.BIGINT, allowNull: false },
-    user_id: { type: DataTypes.BIGINT, allowNull: false },
+    product_id: { type: DataTypes.BIGINT.UNSIGNED, primaryKey: true, autoIncrement: true },
+    category_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true },
+    store_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
+    user_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
     product_name: { type: DataTypes.STRING(255), allowNull: false },
     short_description: { type: DataTypes.STRING(500), allowNull: true },
     full_description: { type: DataTypes.TEXT, allowNull: true },

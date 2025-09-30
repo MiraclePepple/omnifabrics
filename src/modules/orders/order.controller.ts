@@ -1,104 +1,55 @@
 import { Request, Response } from "express";
-import { Order } from "../orders/order.model";
-import { ProductItem } from "../product_items/product_item.model";
-import { Cart, CartItem } from "../cart/cart.model";
+import { OrderService } from "./order.service";
 
-// Get all previous orders for a user
-export const getOrderHistory = async (req: Request, res: Response) => {
-  const { user_id } = req.params;
-
+//Create Order
+export const createOrder = async (req: Request, res: Response) => {
   try {
-    const orders = await Order.findAll({
-      where: { user_id },
-      order: [["created_at", "DESC"]],
-    });
+    const userId = req.user?.user_id;
+    const { products, delivery_info } = req.body;
 
-    if (!orders || orders.length === 0) {
-      return res.json({ message: "No previous orders found", orders: [] });
+    if (!products || products.length === 0) {
+      return res.status(400).json({ message: "No products in order" });
     }
 
-    // Parse product info for each order
-    const ordersWithDetails = await Promise.all(
-      orders.map(async (order) => {
-        const products = JSON.parse(order.product_info);
+    const result = await OrderService.createOrder(userId!, products, delivery_info);
 
-        // For each product, check current availability
-        const productsWithStatus = await Promise.all(
-          products.map(async (p: any) => {
-            const productItem = await ProductItem.findByPk(p.product_item_id);
-            return {
-              ...p,
-              is_available:
-                productItem &&
-                productItem.is_available &&
-                (productItem.quantity ?? 0) > 0,
-            };
-          })
-        );
-
-        return {
-          order_id: order.order_id,
-          total_amount: order.total_amount,
-          delivery_details: JSON.parse(order.delivery_details),
-          delivery_status: order.delivery_status,
-          created_at: order.created_at,
-          products: productsWithStatus,
-        };
-      })
-    );
-
-    return res.json({ orders: ordersWithDetails });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
+    // result now contains { order, payment_required, next }
+    return res.status(201).json({
+      message: "Order created",
+      order: result.order,
+      payment_required: result.payment_required,
+      next: result.next,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message });
   }
 };
 
-// Re-buy a product from a previous order
-export const rebuyProduct = async (req: Request, res: Response) => {
-  const { user_id, product_item_id, quantity = 1 } = req.body;
-
+// Get Orders
+export const getOrders = async (req: Request, res: Response) => {
   try {
-    const productItem = await ProductItem.findByPk(product_item_id);
-    if (
-      !productItem ||
-      !productItem.is_available ||
-      (productItem.quantity ?? 0) < quantity
-    ) {
-      return res.status(400).json({ message: "Product is out of stock" });
-    }
-
-    // Find or create cart
-    let cart = await Cart.findOne({ where: { user_id } });
-    if (!cart) {
-      cart = await Cart.create({ user_id });
-    }
-
-    // Check if product is already in cart
-    const existingItem = await CartItem.findOne({
-      where: {
-        cart_id: (cart as any).cart_id,
-        product_item_id,
-      },
-    });
-
-    if (existingItem) {
-      (existingItem as any).quantity += quantity;
-      await existingItem.save();
-    } else {
-      await CartItem.create({
-        cart_id: (cart as any).cart_id,
-        product_item_id,
-        quantity,
-      });
-    }
-
-    return res.json({
-      message: "Product added to cart for re-buy",
-      cart_id: (cart as any).cart_id,
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
+    const userId = req.user?.user_id;
+    const orders = await OrderService.getOrders(userId!);
+    return res.status(200).json({ orders });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message });
   }
-}; 
+};
+
+// Get Order By Id
+export const getOrderById = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.user_id;
+    const { id } = req.params;
+
+    const orderId = Number(id);
+    if (isNaN(orderId)) return res.status(400).json({ message: "Invalid order ID" });
+
+    const order = await OrderService.getOrderById(userId!, orderId);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    return res.status(200).json({ order });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message });
+  }
+};

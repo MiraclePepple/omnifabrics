@@ -1,26 +1,49 @@
 import { Request, Response } from 'express';
-import * as service from './cart.service';
+import { CartService } from './cart.service';
 
-export const addToCart = async (req: Request, res: Response) => {
-  try {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-
-    const userId = req.user.user_id;
-    const item = await service.addItemToCart(userId, req.body);
-    res.status(201).json(item);
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
+export class CartController {
+  static async addToCart(req: Request, res: Response) {
+    try {
+      const user_id = (req as any).user.user_id;
+      const { product_id, product_item_id, quantity } = req.body;
+      const item = await CartService.addItemToCart(user_id, { product_id, product_item_id, quantity });
+      return res.status(201).json(item);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   }
-};
 
-export const getCart = async (req: Request, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  static async getCart(req: Request, res: Response) {
+    try {
+      const user_id = (req as any).user.user_id;
+      const items = await CartService.listCartItems(user_id);
+      return res.json(items);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
 
-  const items = await service.listCartItems(req.user.user_id);
-  res.json(items);
-};
+  static async removeItem(req: Request, res: Response) {
+    try {
+      const user_id = (req as any).user.user_id;
+      const cart_item_id = Number(req.params.cartItemId);
+      const result = await CartService.removeCartItem(user_id, cart_item_id);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
 
-export const removeItem = async (req: Request, res: Response) => {
-  await service.removeCartItem(Number(req.params.cartItemId));
-  res.json({ message: 'removed' });
-};
+  // Prepare checkout and return payment-info (do not process payment here)
+  static async checkout(req: Request, res: Response) {
+    try {
+      const user_id = (req as any).user.user_id;
+      const { delivery_info, card_info } = req.body;
+      const result = await CartService.prepareCheckout(user_id, delivery_info, card_info);
+      if (!result.ok) return res.status(400).json(result);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+}
