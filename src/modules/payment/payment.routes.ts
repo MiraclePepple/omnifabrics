@@ -4,8 +4,7 @@ import { authenticate } from '../../middlewares/validate.middleware';
 
 const router = Router();
 
-router.post('/pay', authenticate, PaymentController.payForOrder);
-router.post('/webhook', PaymentController.webhook); // flutterwave calls this (no auth)
-router.get('/verify', PaymentController.verifyRedirect); // optional redirect verify
+router.post('/pay', authenticate, PaymentController.payForOrder); // client triggers payment
+router.post('/webhook', PaymentController.webhook); // Squadco calls this
 
 export default router;

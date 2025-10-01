@@ -14,12 +14,13 @@ export class ProductService {
 
     const store = await Store.findByPk(productData.store_id);
     if (!store) throw new Error('Store not found');
-  
+
     // Validate minimum 3 images
     if (!productData.images || productData.images.length < 3) {
       throw new Error('Minimum of 3 images required');
     }
-    if (!productData.category_id) throw new Error("category_id is required");  
+    if (!productData.category_id) throw new Error("category_id is required");
+
     // Create product
     const product = await Product.create({
       user_id,
@@ -57,7 +58,6 @@ export class ProductService {
     if (!product) throw new Error('Product not found');
     if (product.user_id !== user_id) throw new Error('Unauthorized');
 
-    // Update product fields
     await product.update({
       product_name: updateData.product_name || product.product_name,
       short_description: updateData.short_description || product.short_description,
@@ -69,7 +69,6 @@ export class ProductService {
       is_active: updateData.is_active ?? product.is_active,
     });
 
-    // Handle variants update if provided
     if (updateData.variants) {
       for (const v of updateData.variants) {
         const item = await ProductItem.findByPk(v.product_item_id);
@@ -87,7 +86,7 @@ export class ProductService {
     return product;
   }
 
-  // Disable product (hide from buyers)
+  // Disable product
   static async disableProduct(user_id: number, product_id: number) {
     const product = await Product.findByPk(product_id);
     if (!product) throw new Error('Product not found');
@@ -107,38 +106,55 @@ export class ProductService {
     return { message: 'Product deleted successfully' };
   }
 
-  // List all products for a seller (with optional filters)
+  // List seller products with optional filters
   static async listSellerProducts(user_id: number, filters?: any) {
     const where: any = { user_id };
     if (filters?.category_id) where.category_id = filters.category_id;
     if (filters?.is_active !== undefined) where.is_active = filters.is_active;
 
     const products = await Product.findAll({
-  where,
-  include: [{ model: ProductItem, as: 'variants' }], // must match `as`
-});
+      where,
+      include: [{ model: ProductItem, as: 'variants' }],
+    });
+
     return products;
   }
 
-  // Search and filter products (for buyers)
+  // Search products for buyers with price filter on variants
   static async searchProducts(search: string, filter: any) {
     const where: any = {
       product_name: { [Op.like]: `%${search}%` },
       is_active: true
     };
 
-    if (filter?.price_min) where.price = { [Op.gte]: filter.price_min };
-    if (filter?.price_max) where.price = { ...where.price, [Op.lte]: filter.price_max };
+    const variantWhere: any = {};
+    if (filter?.price_min) variantWhere.price = { [Op.gte]: filter.price_min };
+    if (filter?.price_max) variantWhere.price = { ...variantWhere.price, [Op.lte]: filter.price_max };
 
     const products = await Product.findAll({
-  where,
-  include: [{ model: ProductItem, as: 'variants' }],
-  order: filter?.sortBy === 'latest' ? [['created_at', 'DESC']] :
-         filter?.sortBy === 'oldest' ? [['created_at', 'ASC']] :
-         filter?.sortBy === 'rating' ? [['rating', 'DESC']] : undefined
-});
-
+      where,
+      include: [
+        {
+          model: ProductItem,
+          as: 'variants',
+          where: Object.keys(variantWhere).length ? variantWhere : undefined,
+          required: false,
+        }
+      ],
+      order: filter?.sortBy === 'latest' ? [['created_at', 'DESC']] :
+             filter?.sortBy === 'oldest' ? [['created_at', 'ASC']] :
+             filter?.sortBy === 'rating' ? [['rating', 'DESC']] : undefined
+    });
 
     return products;
+  }
+
+  // Get single product with variants
+  static async getProductById(product_id: number) {
+    const product = await Product.findByPk(product_id, {
+      include: [{ model: ProductItem, as: 'variants' }]
+    });
+    if (!product) throw new Error('Product not found');
+    return product;
   }
 }

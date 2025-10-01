@@ -1,10 +1,16 @@
-import Joi from 'joi';
+import Joi from "joi";
 
 export const createOrderSchema = Joi.object({
-  cart_id: Joi.number().integer().optional(),
-  shipping_address: Joi.object().required(),
-  payment_method: Joi.string().required()
+  products: Joi.array().items(
+    Joi.object({
+      product_id: Joi.number().required(),
+      product_item_id: Joi.number().optional(),
+      quantity: Joi.number().required(),
+    })
+  ).required(),
+  delivery_info: Joi.object().required(),
 });
+
 export const updateOrderStatusSchema = Joi.object({
-  status: Joi.string().valid('pending', 'shipped', 'delivered', 'cancelled').required()
+  status: Joi.string().valid("pending", "shipped", "delivered", "cancelled").required(),
 });

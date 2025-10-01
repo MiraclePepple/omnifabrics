@@ -1,6 +1,6 @@
-import { DataTypes, Model } from "sequelize";
+import { DataTypes, Model, Optional } from "sequelize";
 import sequelize from "../../config/db";
-//import { ProductItem } from "./productItemModel";
+import { ProductItem } from "../product_items/product_item.model";
 
 export class Product extends Model {
   public product_id!: number;
@@ -19,18 +19,20 @@ export class Product extends Model {
   public discount_end_date?: Date;
   public readonly created_at!: Date;
   public readonly updated_at!: Date;
+
+  public variants?: ProductItem[];
 }
 
 Product.init(
   {
     product_id: { type: DataTypes.BIGINT.UNSIGNED, primaryKey: true, autoIncrement: true },
-    category_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true },
+    category_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
     store_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
     user_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
     product_name: { type: DataTypes.STRING(255), allowNull: false },
     short_description: { type: DataTypes.STRING(500), allowNull: true },
     full_description: { type: DataTypes.TEXT, allowNull: true },
-    images: { type: DataTypes.JSON, allowNull: true },
+    images: { type: DataTypes.JSON, allowNull: false },
     rating: { type: DataTypes.DECIMAL(3, 2), defaultValue: 0.0 },
     comment: { type: DataTypes.TEXT, allowNull: true },
     is_active: { type: DataTypes.BOOLEAN, defaultValue: true },

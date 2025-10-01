@@ -43,12 +43,13 @@ Wallet.hasMany(Transaction, { foreignKey: 'wallet_id' });
 Transaction.belongsTo(Wallet, { foreignKey: 'wallet_id' });
 
 // User ↔ Store (owner)
-User.hasMany(Store, { foreignKey: 'user_id' });
-Store.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(Store, { foreignKey: 'user_id', as: 'stores' }); // plural
+Store.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // Store ↔ Product
-Store.hasMany(Product, { foreignKey: 'store_id' });
-Product.belongsTo(Store, { foreignKey: 'store_id' });
+Store.hasMany(Product, { foreignKey: 'store_id', as: 'products' });
+Product.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
+
 
 // Category ↔ Product
 Category.hasMany(Product, { foreignKey: 'category_id' });
@@ -57,6 +58,10 @@ Product.belongsTo(Category, { foreignKey: 'category_id' });
 // Product ↔ ProductItem
 Product.hasMany(ProductItem, { foreignKey: 'product_id', as: 'variants' });
 ProductItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+
+// Product.hasMany(ProductItem, { foreignKey: "product_id", as: "variants" });
+// ProductItem.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+
 
 // User ↔ Cart & CartItems
 User.hasMany(Cart, { foreignKey: 'user_id' });
