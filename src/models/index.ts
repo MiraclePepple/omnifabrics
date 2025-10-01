@@ -103,6 +103,9 @@ Notification.belongsTo(User, { foreignKey: 'user_id' });
 Admin.belongsToMany(Permission, { through: AdminPermission, foreignKey: 'admin_id' });
 Permission.belongsToMany(Admin, { through: AdminPermission, foreignKey: 'permission_id' });
 
+AdminPermission.belongsTo(Permission, {foreignKey: 'permission_id', as: 'Permission'});
+Permission.hasMany(AdminPermission, { foreignKey: 'permission_id' });
+
 // Card
 User.hasMany(Card, { foreignKey: 'user_id' });
 Card.belongsTo(User, { foreignKey: 'user_id' });

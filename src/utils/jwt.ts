@@ -15,6 +15,14 @@ export interface TokenPayload {
   // you can add other fields if needed, e.g., role?: string
 }
 
+// Admin token payload
+export interface AdminTokenPayload {
+  admin_id: number;
+  is_super_admin?: boolean;
+  first_time?: boolean;
+  [k: string]: any;
+}
+
 // Generate a JWT token
 export const generateToken = (
   payload: TokenPayload,
@@ -32,4 +40,27 @@ export const verifyToken = (token: string): TokenPayload => {
   }
 
   return decoded as TokenPayload;
+};
+
+export const generateAdminToken = (
+  payload: AdminTokenPayload,
+  expiresIn: SignOptions['expiresIn'] = '7d'
+): string => {
+  return jwt.sign(payload as JwtPayload, JWT_SECRET, { expiresIn });
+};
+
+export const verifyAdminToken = (token: string): AdminTokenPayload => {
+  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+  if (!decoded || typeof decoded === 'string') {
+    throw new Error('Invalid token');
+  }
+
+  const anyDecoded = decoded as any;
+  const adminId = anyDecoded.admin_id ?? anyDecoded.adminId ?? anyDecoded.id;
+  if (!adminId) {
+    throw new Error('Invalid admin token payload: missing admin id');
+  }
+
+  // return decoded + normalized admin_id
+  return { ...(decoded as any), admin_id: adminId } as AdminTokenPayload;
 };

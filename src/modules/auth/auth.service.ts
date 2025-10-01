@@ -3,6 +3,7 @@ import { Otp } from './otp.model';
 import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { Admin } from '../admin/admin.model';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 const OTP_EXPIRY_MINUTES = 10;
