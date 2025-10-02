@@ -13,7 +13,7 @@ import userRoutes from '../modules/users/user.route';
 import productRoutes from '../modules/products/product.route';
 import storeRoutes from '../modules/store/store.routes';
 import orderRoutes from '../modules/orders/order.route';
-import adminUserRoutes from '../modules/admin/admin.user.route';
+
 
 
 
@@ -33,7 +33,7 @@ router.use('/user', userRoutes);
 router.use('/product', productRoutes);
 router.use('/store', storeRoutes);
 router.use('/order', orderRoutes);
-router.use('/admin', adminUserRoutes);
+
 
 
 

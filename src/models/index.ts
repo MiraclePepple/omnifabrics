@@ -31,6 +31,8 @@ import { Admin } from '../modules/admin/admin.model';
 import { Permission } from '../modules/permissions/permission.model';
 import { AdminPermission } from '../modules/admin_permission/admin_permission.model';
 import { Card } from '../modules/card/card.model';
+import Support from '../modules/support/support.model'
+
 
 // Associations matching your ERD:
 
@@ -59,8 +61,9 @@ Product.belongsTo(Category, { foreignKey: 'category_id' });
 Product.hasMany(ProductItem, { foreignKey: 'product_id', as: 'variants' });
 ProductItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 
-// Product.hasMany(ProductItem, { foreignKey: "product_id", as: "variants" });
-// ProductItem.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+User.hasMany(Support, { foreignKey: 'userId' });
+Support.belongsTo(User, { foreignKey: 'userId' });
+
 
 
 // User ↔ Cart & CartItems

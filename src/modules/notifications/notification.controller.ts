@@ -1,18 +1,24 @@
 import { Request, Response } from 'express';
-import * as svc from './notification.service';
+import NotificationService from './notification.service';
 
-export const createNote = async (req:Request, res:Response) => {
-  const n = await svc.createNotification(req.body);
-  res.status(201).json(n);
-};
+export default class NotificationController {
+  static async getMyNotifications(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const notifications = await NotificationService.getUserNotifications(userId);
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
 
-export const listForUser = async (req:Request, res:Response) => {
-  const u = (req.user!).user_id;
-  const notes = await svc.listNotificationsForUser(u);
-  res.json(notes);
-};
-
-export const markRead = async (req:Request, res:Response) => {
-  const n = await svc.markAsRead(Number(req.params.id));
-  res.json(n);
-};
+  static async markAsRead(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const notification = await NotificationService.markAsRead(Number(id));
+      res.json(notification);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
+}

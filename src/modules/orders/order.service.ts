@@ -1,7 +1,7 @@
 import { Order, OrderItem } from "./order.model";
 import { Product } from "../products/product.model";
 import { ProductItem } from "../product_items/product_item.model";
-import { Transaction } from "../payment/transaction.model";
+import NotificationService from "../notifications/notification.service";
 import sequelize from "../../config/db";
 import { PaymentService } from "../payment/payment.service";
 
@@ -79,6 +79,7 @@ export class OrderService {
       await t.rollback();
       throw err;
     }
+    
   }
 
   // Rebuy previous order

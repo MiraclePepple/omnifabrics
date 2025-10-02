@@ -1,35 +1,44 @@
-// src/modules/payment/payment.service.ts
-import axios from "axios";
-import { Transaction } from "./transaction.model";
-import { Order } from "../orders/order.model";
-import { ProductItem } from "../product_items/product_item.model";
-import { Product } from "../products/product.model";
-import sequelize from "../../config/db";
+// src/modules/payments/payment.service.ts
+import axios from 'axios';
+import sequelize from '../../config/db';
+import { Order } from '../orders/order.model';
+import { Product } from '../products/product.model';
+import { ProductItem } from '../product_items/product_item.model';
+import { Transaction } from './transaction.model';
 
-const SQUADCO_SECRET = process.env.SQUADCO_SECRET_KEY!;
-const SQUADCO_BASE = process.env.SQUADCO_BASE_URL || "https://api.squadco.com/v1";
-const APP_BASE = process.env.APP_BASE_URL || "http://localhost:3000";
+// env keys — set them in .env
+const SQUADCO_SECRET = process.env.SQUADCO_SECRET_KEY || '';
+const SQUADCO_BASE = process.env.SQUADCO_BASE_URL || 'https://api.squadco.com/v1';
+const APP_BASE = process.env.APP_BASE_URL || 'http://localhost:3000';
+
+if (!SQUADCO_SECRET) {
+  console.warn('SQUADCO_SECRET_KEY not set — payment provider calls will fail until you set it.');
+}
 
 export class PaymentService {
-
-  // Initialize payment with Squadco
+  /**
+   * Initialize a payment with Squadco (or provider).
+   * Creates a Transaction row (pending) and returns checkout link + transaction.
+   */
   static async initializePayment(
     user_id: number,
-    order: Order,
+    order: Order | null,
     amount: number,
-    currency = "NGN",
+    currency = 'NGN',
     meta: any = {}
   ) {
-    // 1️⃣ Create pending transaction
+    // Create pending transaction record
     const tx = await Transaction.create({
-      order_id: order.order_id,
+      order_id: order ? (order as any).order_id : null,
       user_id,
       amount,
       currency,
-      status: "pending",
+      status: 'pending',
+      created_at: new Date(),
+      updated_at: new Date(),
     });
 
-    // 2️⃣ Squadco payload
+    // Build provider payload — adapt fields to Squadco docs
     const payload = {
       reference: `omni_${tx.transaction_id}_${Date.now()}`,
       amount: Number(amount).toFixed(2),
@@ -38,103 +47,144 @@ export class PaymentService {
       customer: {
         email: meta.email,
         phone_number: meta.phone_number,
-        name: meta.name || "Customer",
+        name: meta.name || 'Customer',
       },
       metadata: {
         internal_transaction_id: tx.transaction_id,
         ...meta,
       },
-      description: `Payment for order ${order.order_id}`,
+      description: `Payment for order ${order ? (order as any).order_id : 'N/A'}`,
     };
 
-    // 3️⃣ Call Squadco
+    // Call Squadco API
     const resp = await axios.post(`${SQUADCO_BASE}/payments`, payload, {
       headers: {
         Authorization: `Bearer ${SQUADCO_SECRET}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
+      timeout: 15000,
     });
 
     const data = resp.data;
-    if (!data || !data.success) {
-      await tx.update({ status: "failed", provider_data: data });
-      throw new Error("Failed to initialize Squadco payment");
+
+    // Guard: provider success flag may differ; adapt if needed
+    if (!data || (data.success !== true && data.status !== 'success')) {
+      await tx.update({ status: 'failed', provider_data: data, updated_at: new Date() }).catch(() => {});
+      throw new Error('Failed to initialize Squadco payment');
     }
 
-    // 4️⃣ Update transaction
+    // provider_ref and checkout URL field names may vary — adapt as necessary
+    const providerRef = data.payment_id ?? data.data?.id ?? data.data?.reference ?? null;
+    const checkoutUrl = data.checkout_url ?? data.data?.checkout_url ?? data.data?.link ?? data.data?.authorization_url ?? null;
+
     await tx.update({
-      provider_ref: data.payment_id,
+      provider_ref: providerRef,
       provider_data: data,
-      status: "pending",
+      updated_at: new Date(),
     });
 
     return {
       transaction: tx,
-      payment_link: data.checkout_url,
+      payment_link: checkoutUrl,
       provider_response: data,
     };
   }
 
-  // Verify payment
+  /**
+   * Verify transaction at provider side using provider reference/id.
+   * Returns provider response object.
+   */
   static async verifyTransaction(providerRef: string) {
-    const resp = await axios.get(`${SQUADCO_BASE}/payments/${providerRef}`, {
+    if (!providerRef) throw new Error('Missing provider reference to verify');
+
+    const resp = await axios.get(`${SQUADCO_BASE}/payments/${encodeURIComponent(providerRef)}`, {
       headers: { Authorization: `Bearer ${SQUADCO_SECRET}` },
+      timeout: 10000,
     });
 
-    if (!resp.data || !resp.data.success) throw new Error("Payment verification failed");
+    if (!resp.data || (resp.data.success !== true && resp.data.status !== 'success')) {
+      throw new Error('Payment verification failed at provider');
+    }
     return resp.data;
   }
 
-  // Finalize payment from webhook
-  static async finalizePayment(providerData: any) {
-    if (!providerData.metadata?.internal_transaction_id) {
-      throw new Error("Invalid webhook payload: missing metadata");
+  /**
+   * Finalize payment - called from webhook or manual verify redirect.
+   * providerPayload should be the full provider payload (Squadco webhook body).
+   *
+   * Steps:
+   *  - find local Transaction (via metadata.internal_transaction_id or provider_ref)
+   *  - verify provider status
+   *  - mark tx paid, update order payment status, decrement variant stock inside DB tx
+   */
+  static async finalizePayment(providerPayload: any) {
+    // Defensive: provider structures vary. Try to get both provider payment id and internal metadata.
+    const providerPaymentId = providerPayload.payment_id ?? providerPayload.data?.id ?? providerPayload.data?.payment_id ?? providerPayload.id ?? null;
+    const metadata = providerPayload.metadata ?? providerPayload.data?.metadata ?? providerPayload.data?.meta ?? null;
+    const internalTxId = metadata?.internal_transaction_id ?? providerPayload.data?.metadata?.internal_transaction_id ?? null;
+
+    // Locate transaction by internal id first then by provider_ref
+    let tx: any = null;
+    if (internalTxId) {
+      tx = await Transaction.findByPk(Number(internalTxId));
+    }
+    if (!tx && providerPaymentId) {
+      tx = await Transaction.findOne({ where: { provider_ref: String(providerPaymentId) } });
+    }
+    if (!tx) throw new Error('Transaction record not found');
+
+    // Verify with provider to avoid spoofed webhooks
+    const verifyResp = await this.verifyTransaction(providerPaymentId ?? tx.provider_ref);
+    // adapt success test accordingly
+    const isSuccess = verifyResp && (verifyResp.success === true || verifyResp.status === 'success' || verifyResp.data?.status === 'success');
+
+    if (!isSuccess) {
+      await tx.update({ status: 'failed', provider_data: providerPayload }).catch(() => {});
+      throw new Error('Provider reports payment unsuccessful');
     }
 
-    const tx = await Transaction.findByPk(providerData.metadata.internal_transaction_id);
-    if (!tx) throw new Error("Transaction not found");
-
-    const verifyResp = await this.verifyTransaction(providerData.payment_id);
-    if (!verifyResp?.success) {
-      await tx.update({ status: "failed", provider_data: providerData });
-      throw new Error("Payment verification failed");
-    }
-
+    // Start DB transaction for finalization (decrement stock, mark paid)
     const t = await sequelize.transaction();
     try {
-      // Update transaction to paid
-      await tx.update({ status: "paid", provider_data: providerData }, { transaction: t });
+      await tx.update({ status: 'paid', provider_data: verifyResp, provider_ref: providerPaymentId ?? tx.provider_ref, updated_at: new Date() }, { transaction: t });
 
-      // Update order stock & status
-      const order = await Order.findByPk(tx.order_id, { transaction: t });
-      if (!order) throw new Error("Order not found");
+      // If transaction linked to order, update order and decrement inventory
+      if (tx.order_id) {
+        const order = await Order.findByPk(tx.order_id, { transaction: t, lock: t.LOCK.UPDATE });
+        if (!order) throw new Error('Order not found for transaction');
 
-      const products: any[] = JSON.parse(order.product_info || "[]");
+        const products: any[] = JSON.parse(order.product_info || '[]');
 
-      for (const p of products) {
-        if (p.product_item_id) {
-          const variant = await ProductItem.findByPk(p.product_item_id, { transaction: t, lock: t.LOCK.UPDATE });
-          if (!variant) throw new Error(`Product variant ${p.product_item_id} not found`);
-          if (variant.quantity !== null && variant.quantity < p.quantity) throw new Error("Insufficient stock");
-          if (variant.quantity !== null) {
-            await variant.update(
-              { quantity: variant.quantity - p.quantity, is_available: variant.quantity - p.quantity > 0 },
-              { transaction: t }
-            );
+        for (const p of products) {
+          if (p.product_item_id) {
+            const variant = await ProductItem.findByPk(p.product_item_id, { transaction: t, lock: t.LOCK.UPDATE });
+            if (!variant) throw new Error(`Product variant ${p.product_item_id} not found`);
+            if (variant.quantity !== null && variant.quantity < p.quantity) {
+              throw new Error(`Insufficient stock for variant ${p.product_item_id}`);
+            }
+            if (variant.quantity !== null) {
+              await variant.update({ quantity: variant.quantity - p.quantity, is_available: (variant.quantity - p.quantity) > 0 }, { transaction: t });
+            }
+          } else {
+            const product = await Product.findByPk(p.product_id, { transaction: t, lock: t.LOCK.UPDATE });
+            if (!product) throw new Error(`Product ${p.product_id} not found`);
+            // If product-level quantity exists in schema, decrement it
+            if ((product as any).quantity !== undefined) {
+              const newQty = Number((product as any).quantity) - Number(p.quantity);
+              await product.update({ quantity: newQty, is_active: newQty > 0 }, { transaction: t });
+            }
           }
-        } else {
-          const product = await Product.findByPk(p.product_id, { transaction: t, lock: t.LOCK.UPDATE });
-          if (!product) throw new Error(`Product ${p.product_id} not found`);
         }
-      }
 
-      await order.update({ payment_status: "paid", tracking_status: "processing" }, { transaction: t });
+        // mark order paid & update tracking
+        await order.update({ payment_status: 'paid', tracking_status: 'processing' }, { transaction: t });
+      }
 
       await t.commit();
       return { success: true, tx };
     } catch (err) {
       await t.rollback();
-      await tx.update({ status: "failed", provider_data: providerData }).catch(() => {});
+      await tx.update({ status: 'failed', provider_data: providerPayload }).catch(() => {});
       throw err;
     }
   }
