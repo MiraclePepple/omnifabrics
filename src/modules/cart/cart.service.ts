@@ -89,4 +89,34 @@ export class CartService {
     payment,
   };
 }
+
+static async addItemToCart(user_id: number, { product_id, product_item_id, quantity }: { product_id: number, product_item_id?: number | null, quantity: number }) {
+    // 1. Ensure user has a cart
+    let cart = await Cart.findOne({ where: { user_id } });
+    if (!cart) {
+      cart = await Cart.create({ user_id });
+    }
+
+    // 2. Check if product already exists in cart
+    const existingItem = await CartItem.findOne({
+      where: { cart_id: cart.cart_id, product_id, product_item_id }
+    });
+
+    if (existingItem) {
+      // Update quantity if it already exists
+      existingItem.quantity += quantity;
+      await existingItem.save();
+      return existingItem;
+    }
+
+    // 3. Otherwise, create new cart item
+    const newItem = await CartItem.create({
+      cart_id: cart.cart_id,
+      product_id,
+      product_item_id,
+      quantity
+    });
+
+    return newItem;
+  }
 }

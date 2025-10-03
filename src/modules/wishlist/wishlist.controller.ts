@@ -35,14 +35,19 @@ export class WishlistController {
   }
 
   static async moveToCart(req: Request, res: Response) {
-    try {
-      const user_id = (req as any).user.user_id;
-      const wish_id = Number(req.params.wishId);
-      const { quantity } = req.body;
-      const result = await WishlistService.moveToCart(user_id, wish_id, quantity ?? 1);
-      return res.json(result);
-    } catch (err: any) {
-      return res.status(400).json({ error: err.message });
-    }
+  try {
+    console.log("PARAMS:", req.params);   // 👈 check this
+    console.log("BODY:", req.body);
+
+    const user_id = (req as any).user.user_id;
+    const wish_id = Number(req.params.wishId); // could be NaN if route wrong
+    const { quantity } = req.body;
+
+    const result = await WishlistService.moveToCart(user_id, wish_id, quantity ?? 1);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
   }
+}
+
 }

@@ -57,18 +57,19 @@ export class WishlistService {
   }
 
   static async moveToCart(user_id: number, wish_id: number, quantity = 1) {
-    const wish = await Wishlist.findOne({ where: { wish_id, user_id } });
-    if (!wish) throw new Error('Wishlist item not found');
+  const wish = await Wishlist.findOne({ where: { wish_id, user_id } });
+  if (!wish) throw new Error("Wishlist item not found");
 
-    // Add to cart
-    await CartService.addItemToCart(user_id, {
-      product_id: wish.product_id,
-      product_item_id: wish.product_item_id,
-      quantity
-    });
+  // Add to cart
+  const cartItem = await CartService.addItemToCart(user_id, {
+    product_id: wish.product_id,
+    product_item_id: wish.product_item_id,
+    quantity
+  });
 
-    // Remove from wishlist
-    await wish.destroy();
-    return { message: 'Moved to cart' };
+  // Optionally: remove item from wishlist after moving
+  await wish.destroy();
+
+  return { message: "Item moved to cart successfully", cartItem };
   }
 }
