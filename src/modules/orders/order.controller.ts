@@ -1,75 +1,87 @@
+// src/modules/orders/order.controller.ts
 import { Request, Response } from "express";
 import { OrderService } from "./order.service";
-import { Transaction } from "../payment/transaction.model";
+import { Order } from "./order.model";
+import { PaymentService } from "../payment/payment.service";
 
-// Create Order
-export const createOrder = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.user_id;
-    const { products, delivery_info } = req.body;
+export class OrderController {
 
-    if (!products || products.length === 0) {
-      return res.status(400).json({ message: "No products in order" });
+  static async createOrder(req: Request, res: Response) {
+    try {
+      if (!req.user) throw new Error("User not authenticated");
+
+      const { store_id, total_amount, product_info, delivery_details } = req.body;
+
+      if (!total_amount || !product_info || !delivery_details) {
+        throw new Error("Missing required fields");
+      }
+
+      // create the order
+      const order = await Order.create({
+        user_id: req.user.user_id,
+        store_id: store_id || null,
+        total_amount,
+        product_info,
+        delivery_details,
+        delivery_status: "pending",
+        is_canceled: false,
+        card_id: null
+      });
+
+      // Initiate payment
+      const paymentResult = await PaymentService.payForOrder(req.user.user_id, order.order_id);
+
+      // Respond with order + payment URL
+      return res.status(201).json({
+        message: "Payment initiated",
+        order,
+        payment_url: paymentResult.payment_link
+      });
+
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
     }
-
-    const orderResult = await OrderService.createOrder(userId!, products, delivery_info);
-
-    return res.status(201).json({
-      message: "Order created and payment initialized",
-      order: orderResult.order,
-      payment_required: orderResult.payment_required,
-      next: orderResult.next,
-    });
-  } catch (error: any) {
-    console.error("createOrder error:", error);
-    return res.status(500).json({ message: error.message });
   }
-};
 
-// Rebuy Order
-export const rebuyOrder = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.user_id;
-    const { id } = req.params;
-
-    const result = await OrderService.rebuyOrder(userId!, Number(id));
-    if (!result) return res.status(404).json({ message: "Original order not found or invalid" });
-
-    return res.status(201).json({
-      message: "Order rebought",
-      order: result.order,
-      payment_required: result.payment_required,
-      payment_link: result.payment_link,
-      transaction_id: result.transaction_id,
-    });
-  } catch (error: any) {
-    return res.status(500).json({ message: error.message });
+  static async getOrderById(req: Request, res: Response) {
+    try {
+      const order_id = Number(req.params.id);
+      const order = await OrderService.getOrderById(order_id);
+      return res.json({ order });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   }
-};
 
-// Get all Orders
-export const getOrders = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.user_id;
-    const orders = await OrderService.getOrders(userId!);
-
-    return res.status(200).json({ orders });
-  } catch (error: any) {
-    return res.status(500).json({ message: error.message });
+  static async listUserOrders(req: Request, res: Response) {
+    try {
+      const user_id = req.user!.user_id;
+      const orders = await OrderService.listUserOrders(user_id);
+      return res.json({ orders });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   }
-};
 
-// Get single Order
-export const getOrderById = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.user_id;
-    const { id } = req.params;
-
-    const order = await OrderService.getOrderById(userId!, Number(id));
-    if (!order) return res.status(404).json({ message: "Order not found" });
-
-    return res.status(200).json({ order });
-  } catch (error: any) {
-    return res.status(500).json({ message: error.message });
+  static async cancelOrder(req: Request, res: Response) {
+    try {
+      const user_id = req.user!.user_id;
+      const order_id = Number(req.params.id);
+      const result = await OrderService.cancelOrder(user_id, order_id);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   }
-};
+
+  static async rebuyOrder(req: Request, res: Response) {
+    try {
+      const user_id = req.user!.user_id;
+      const order_id = Number(req.params.id);
+      const newOrder = await OrderService.rebuyOrder(user_id, order_id);
+      return res.status(201).json({ message: "Order rebought", order: newOrder });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+}

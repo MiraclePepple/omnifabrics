@@ -14,7 +14,12 @@ import '../modules/notifications/notification.model';
 import '../modules/admin/admin.model';
 import '../modules/permissions/permission.model';
 import '../modules/admin_permission/admin_permission.model';
+import '../modules/card/card.model';
+import Support from '../modules/support/support.model';
+import Transaction from '../modules/payment/transaction.model';
+import { Review } from '../modules/reviews/review.model';
 
+// Model imports
 import { User } from '../modules/users/user.model';
 import { Store } from '../modules/store/store.model';
 import { Category } from '../modules/category/category.model';
@@ -24,105 +29,113 @@ import { Cart, CartItem } from '../modules/cart/cart.model';
 import { Wishlist } from '../modules/wishlist/wishlist.model';
 import { Rating } from '../modules/ratings/rating.model';
 import { Order, OrderItem } from '../modules/orders/order.model';
-import { Wallet, Transaction } from '../modules/wallet/wallet.model';
+import { Wallet } from '../modules/wallet/wallet.model';
 import { Payment } from '../modules/payment/payment.model';
 import { Notification } from '../modules/notifications/notification.model';
 import { Admin } from '../modules/admin/admin.model';
 import { Permission } from '../modules/permissions/permission.model';
 import { AdminPermission } from '../modules/admin_permission/admin_permission.model';
 import { Card } from '../modules/card/card.model';
-import Support from '../modules/support/support.model'
 
-
-// Associations matching your ERD:
+// Associations
 
 // Store & Wallet
-Store.hasOne(Wallet, { foreignKey: 'store_id' });
-Wallet.belongsTo(Store, { foreignKey: 'store_id' });
+Store.hasOne(Wallet, { foreignKey: 'store_id', as: 'wallet' });
+Wallet.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
 
 // Wallet ↔ Transactions
-Wallet.hasMany(Transaction, { foreignKey: 'wallet_id' });
-Transaction.belongsTo(Wallet, { foreignKey: 'wallet_id' });
+Wallet.hasMany(Transaction, { foreignKey: 'wallet_id', as: 'transactions' });
+Transaction.belongsTo(Wallet, { foreignKey: 'wallet_id', as: 'wallet' });
+Transaction.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+Transaction.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
 
-// User ↔ Store (owner)
-User.hasMany(Store, { foreignKey: 'user_id', as: 'stores' }); // plural
-Store.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+// User ↔ Store
+User.hasMany(Store, { foreignKey: 'user_id', as: 'stores' });
+Store.belongsTo(User, { foreignKey: 'user_id', as: 'owner' });
 
 // Store ↔ Product
 Store.hasMany(Product, { foreignKey: 'store_id', as: 'products' });
 Product.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
 
-
 // Category ↔ Product
-Category.hasMany(Product, { foreignKey: 'category_id' });
-Product.belongsTo(Category, { foreignKey: 'category_id' });
+Category.hasMany(Product, { foreignKey: 'category_id', as: 'products' });
+Product.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });
 
 // Product ↔ ProductItem
 Product.hasMany(ProductItem, { foreignKey: 'product_id', as: 'variants' });
 ProductItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 
-User.hasMany(Support, { foreignKey: 'userId' });
-Support.belongsTo(User, { foreignKey: 'userId' });
-
-
+// User ↔ Support
+User.hasMany(Support, { foreignKey: 'userId', as: 'support_tickets' });
+Support.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // User ↔ Cart & CartItems
-User.hasMany(Cart, { foreignKey: 'user_id' });
-Cart.belongsTo(User, { foreignKey: 'user_id' });
-Cart.hasMany(CartItem, { foreignKey: 'cart_id' });
-CartItem.belongsTo(Cart, { foreignKey: 'cart_id' });
+User.hasMany(Cart, { foreignKey: 'user_id', as: 'carts' });
+Cart.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+Cart.hasMany(CartItem, { foreignKey: 'cart_id', as: 'cart_items' });
+CartItem.belongsTo(Cart, { foreignKey: 'cart_id', as: 'cart' });
 
 // CartItem ↔ Product & ProductItem
-Product.hasMany(CartItem, { foreignKey: 'product_id' });
-CartItem.belongsTo(Product, { foreignKey: 'product_id' });
-ProductItem.hasMany(CartItem, { foreignKey: 'product_item_id' });
-CartItem.belongsTo(ProductItem, { foreignKey: 'product_item_id' });
+Product.hasMany(CartItem, { foreignKey: 'product_id', as: 'cart_items' });
+CartItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+ProductItem.hasMany(CartItem, { foreignKey: 'product_item_id', as: 'cart_items_variant' });
+CartItem.belongsTo(ProductItem, { foreignKey: 'product_item_id', as: 'product_variant' });
+CartItem.belongsTo(ProductItem, { foreignKey: "product_item_id", as: "product_item" });
 
 // Product ↔ Wishlist
-Product.hasMany(Wishlist, { foreignKey: "product_id", as: "wishlists" });
-Wishlist.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+Product.hasMany(Wishlist, { foreignKey: 'product_id', as: 'wishlists' });
+Wishlist.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 
 // Ratings
-User.hasMany(Rating, { foreignKey: "user_id", as: "ratings" });
-Rating.belongsTo(User, { foreignKey: "user_id", as: "user" });
+User.hasMany(Rating, { foreignKey: 'user_id', as: 'ratings' });
+Rating.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
-User.hasMany(Wishlist, { foreignKey: "user_id", as: "wishlists" });
-Wishlist.belongsTo(User, { foreignKey: "user_id", as: "user" });
+// Wishlist
+User.hasMany(Wishlist, { foreignKey: 'user_id', as: 'wishlists' });
+Wishlist.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // Orders
-User.hasMany(Order, { foreignKey: 'user_id' });
-Order.belongsTo(User, { foreignKey: 'user_id' });
-Order.hasMany(OrderItem, { foreignKey: 'order_id' });
-OrderItem.belongsTo(Order, { foreignKey: 'order_id' });
-Product.hasMany(OrderItem, { foreignKey: 'product_id' });
-OrderItem.belongsTo(Product, { foreignKey: 'product_id' });
+User.hasMany(Order, { foreignKey: 'user_id', as: 'orders' });
+Order.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+Order.hasMany(OrderItem, { foreignKey: 'order_id', as: 'order_items' });
+OrderItem.belongsTo(Order, { foreignKey: 'order_id', as: 'parent_order' });
+Product.hasMany(OrderItem, { foreignKey: 'product_id', as: 'ordered_items' });
+OrderItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product_ordered' });
+Order.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
+Store.hasMany(Order, { foreignKey: 'store_id', as: 'orders' });
 
 // Payments
-Order.hasMany(Payment, { foreignKey: 'order_id' });
-Payment.belongsTo(Order, { foreignKey: 'order_id' });
+Order.hasMany(Payment, { foreignKey: 'order_id', as: 'payments' });
+Payment.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+
 
 // Notifications
-Admin.hasMany(Notification, { foreignKey: 'admin_id' });
-Notification.belongsTo(Admin, { foreignKey: 'admin_id' });
-User.hasMany(Notification, { foreignKey: 'user_id' });
-Notification.belongsTo(User, { foreignKey: 'user_id' });
+Admin.hasMany(Notification, { foreignKey: 'admin_id', as: 'notifications' });
+Notification.belongsTo(Admin, { foreignKey: 'admin_id', as: 'admin' });
+User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
+Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // Admin & Permission many-to-many
-Admin.belongsToMany(Permission, { through: AdminPermission, foreignKey: 'admin_id' });
-Permission.belongsToMany(Admin, { through: AdminPermission, foreignKey: 'permission_id' });
-
-AdminPermission.belongsTo(Permission, {foreignKey: 'permission_id', as: 'Permission'});
-Permission.hasMany(AdminPermission, { foreignKey: 'permission_id' });
+Admin.belongsToMany(Permission, { through: AdminPermission, foreignKey: 'admin_id', as: 'permissions' });
+Permission.belongsToMany(Admin, { through: AdminPermission, foreignKey: 'permission_id', as: 'admins' });
+AdminPermission.belongsTo(Permission, { foreignKey: 'permission_id', as: 'permission' });
+Permission.hasMany(AdminPermission, { foreignKey: 'permission_id', as: 'admin_permissions' });
 
 // Card
-User.hasMany(Card, { foreignKey: 'user_id' });
-Card.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(Card, { foreignKey: 'user_id', as: 'cards' });
+Card.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// Reviews
+Review.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(Review, { foreignKey: 'user_id', as: 'reviews' });
+Review.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+Product.hasMany(Review, { foreignKey: 'product_id', as: 'reviews' });
+Review.belongsTo(Order, { foreignKey: 'order_id', as: 'order_reviewed' });
+Order.hasMany(Review, { foreignKey: 'order_id', as: 'reviews' });
 
-
-
+// Export all models
 export default {
   User, Store, Category, Product, ProductItem, Cart, CartItem,
   Wishlist, Rating, Order, OrderItem, Wallet, Transaction, Payment,
-  Notification, Admin, Permission, AdminPermission, Card
+  Notification, Admin, Permission, AdminPermission, Card, Support, Review
 };

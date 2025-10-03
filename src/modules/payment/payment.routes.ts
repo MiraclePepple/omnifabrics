@@ -1,12 +1,17 @@
-// src/modules/payments/payment.route.ts
-import { Router } from 'express';
-import { PaymentController } from './payment.controller';
-import { authenticate } from '../../middlewares/validate.middleware';
+// src/modules/payments/payment.routes.ts
+import { Router } from "express";
+import { PaymentController } from "./payment.controller";
+import { authenticate } from "../../middlewares/validate.middleware"; // user auth middleware
 
 const router = Router();
 
-router.post('/pay', authenticate, PaymentController.payForOrder);
-router.post('/webhook', PaymentController.webhook); // provider -> no auth
-router.get('/verify', PaymentController.verifyRedirect); // redirect verify
+// Initiate payment for an order (authenticated user)
+router.post("/:order_id/pay", authenticate, PaymentController.payForOrder);
+
+// Squadco webhook endpoint
+router.post("/payment/webhook", PaymentController.webhook);
+
+// Get all payments of the authenticated user
+router.get("/payments", authenticate, PaymentController.getUserPayments);
 
 export default router;

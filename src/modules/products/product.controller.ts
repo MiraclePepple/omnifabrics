@@ -1,14 +1,13 @@
-import { Request, Response } from "express";
-import { ProductService } from "./product.service";
+import { Request, Response } from 'express';
+import { ProductService } from './product.service';
 
 export class ProductController {
-
   // Seller creates a product
   static async createProduct(req: Request, res: Response) {
     try {
       const user_id = req.user!.user_id;
       const product = await ProductService.createProduct(user_id, req.body);
-      return res.status(201).json({ message: "Product created", product });
+      return res.status(201).json({ message: 'Product created', product });
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }
@@ -20,7 +19,7 @@ export class ProductController {
       const user_id = req.user!.user_id;
       const product_id = Number(req.params.id);
       const product = await ProductService.updateProduct(user_id, product_id, req.body);
-      return res.json({ message: "Product updated", product });
+      return res.json({ message: 'Product updated', product });
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }
@@ -65,9 +64,20 @@ export class ProductController {
   static async searchProducts(req: Request, res: Response) {
     try {
       const { q, ...filters } = req.query;
-      if (!q) return res.status(400).json({ error: "Search query missing" });
+      if (!q) return res.status(400).json({ error: 'Search query missing' });
       const products = await ProductService.searchProducts(q as string, filters);
       return res.json({ products });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
+  // Get single product (buyer view)
+  static async getProduct(req: Request, res: Response) {
+    try {
+      const product_id = Number(req.params.id);
+      const product = await ProductService.getProductById(product_id);
+      return res.json({ product });
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }

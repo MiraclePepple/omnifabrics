@@ -4,7 +4,6 @@ import cartRoutes from '../modules/cart/cart.routes';
 import ratingRoutes from '../modules/ratings/rating.routes';
 import wishlistRoutes from '../modules/wishlist/wishlist.routes';
 import walletRoutes from '../modules/wallet/wallet.routes';
-import transactionRoutes from '../modules/wallet/wallet.routes'; // transactions handled in wallet routes or separate file
 import paymentRoutes from '../modules/payment/payment.routes';
 import notificationRoutes from '../modules/notifications/notification.routes';
 import adminRoutes from '../modules/admin/admin.routes';
@@ -13,6 +12,7 @@ import userRoutes from '../modules/users/user.route';
 import productRoutes from '../modules/products/product.route';
 import storeRoutes from '../modules/store/store.routes';
 import orderRoutes from '../modules/orders/order.route';
+import reviewRoutes from '../modules/reviews/review.routes';
 
 
 
@@ -33,6 +33,7 @@ router.use('/user', userRoutes);
 router.use('/product', productRoutes);
 router.use('/store', storeRoutes);
 router.use('/order', orderRoutes);
+router.use('/reviews', reviewRoutes);
 
 
 

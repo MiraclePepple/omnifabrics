@@ -1,9 +1,10 @@
-import { Router } from 'express';
-import * as ctrl from './wallet.controller';
-import { authenticate } from '../../middlewares/validate.middleware';
+// src/modules/wallet/wallet.routes.ts
+import { Router } from "express";
+import walletController from "./wallet.controller";
 
 const router = Router();
-router.get('/:storeId', authenticate, ctrl.getWallet);
-router.post('/transaction', authenticate, ctrl.createTx);
+
+// GET /api/v1/wallet/:storeId/history?status=success
+router.get("/:storeId/history", walletController.getHistory);
 
 export default router;

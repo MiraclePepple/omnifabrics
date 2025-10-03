@@ -1,13 +1,28 @@
-import { ProductItem } from './product_item.model';
+import { ProductItem } from '../product_items/product_item.model';
 
-export const createProductItem = async (data:any) => {
-  return ProductItem.create({ ...data });
-};
+export class ProductItemService {
+  // Create a new variant
+  static async createProductItem(data: Partial<ProductItem>) {
+    const item = await ProductItem.create(data);
+    return item;
+  }
 
-export const getAllProductItems = async () => ProductItem.findAll();
+  // Update variant
+  static async updateProductItem(product_item_id: number, data: Partial<ProductItem>) {
+    await ProductItem.update(data, { where: { product_item_id } });
+    const updated = await ProductItem.findByPk(product_item_id);
+    return updated;
+  }
 
-export const getProductItemById = async (id:number) => ProductItem.findByPk(id);
+  // Delete a variant
+  static async deleteProductItem(product_item_id: number) {
+    await ProductItem.destroy({ where: { product_item_id } });
+    return { message: "Product variant deleted successfully." };
+  }
 
-export const updateProductItem = async (id:number, data:any) => ProductItem.update(data, { where: { product_item_id: id } });
-
-export const deleteProductItem = async (id:number) => ProductItem.destroy({ where: { product_item_id: id } });
+  // Get all variants for a product
+  static async getVariantsByProduct(product_id: number) {
+    const variants = await ProductItem.findAll({ where: { product_id } });
+    return variants;
+  }
+}

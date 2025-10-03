@@ -1,18 +1,58 @@
-import { Wallet, Transaction } from './wallet.model';
+// src/modules/wallet/wallet.service.ts
+import Wallet from "./wallet.model";
+import Transaction from "../payment/transaction.model";
+import { Order } from "../orders/order.model";
+import Store from "../store/store.model";
 
-export const getWalletForStore = async (storeId:number) => Wallet.findOne({ where: { store_id: storeId }});
+class WalletService {
+  async creditWallet(storeId: number, amount: number) {
+    const wallet = await Wallet.findOne({ where: { store_id: storeId } });
+    if (!wallet) throw new Error("Wallet not found");
 
-export const createTransaction = async (walletId:number, amount:number, type:string, description?:string) => {
-  const tx = await Transaction.create({ wallet_id: walletId, amount, type, status: 'pending', description, created_at: new Date() });
-  return tx;
-};
+    wallet.balance = Number(wallet.balance) + Number(amount);
+    await wallet.save();
 
-export const updateWalletBalance = async (walletId:number, amount:number, isCredit:boolean) => {
-  const wallet = await Wallet.findByPk(walletId);
-  if (!wallet) throw new Error('Wallet not found');
-  const current = Number(wallet.get('balance') || 0);
-  const newBal = isCredit ? current + amount : current - amount;
-  wallet.set('balance', newBal);
-  await wallet.save();
-  return wallet;
-};
+    return wallet;
+  }
+
+  async debitWallet(storeId: number, amount: number) {
+    const wallet = await Wallet.findOne({ where: { store_id: storeId } });
+    if (!wallet) throw new Error("Wallet not found");
+
+    if (Number(wallet.balance) < Number(amount)) {
+      throw new Error("Insufficient wallet balance");
+    }
+
+    wallet.balance = Number(wallet.balance) - Number(amount);
+    await wallet.save();
+
+    return wallet;
+  }
+
+  async getWalletHistory(storeId: number, status?: string) {
+    const whereClause: any = {};
+    if (status) {
+      whereClause.status = status;
+    }
+
+    const transactions = await Transaction.findAll({
+      include: [
+        {
+          model: Order,
+          as: "order",
+          required: true,
+          where: { store_id: storeId },
+          include: [
+            { model: Store, as: "store" }
+          ]
+        }
+      ],
+      where: whereClause,
+      order: [["created_at", "DESC"]],
+    });
+
+    return transactions;
+  }
+}
+
+export default new WalletService();

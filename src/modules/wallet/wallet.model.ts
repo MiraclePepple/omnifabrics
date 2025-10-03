@@ -1,21 +1,57 @@
-import { DataTypes } from 'sequelize';
-import sequelize from '../../config/db';
+// src/modules/wallet/wallet.model.ts
+import { DataTypes, Model, Optional } from "sequelize";
+import sequelize from "../../config/db";
 
-export const Wallet = sequelize.define('Wallet', {
-  wallet_id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-  store_id: DataTypes.BIGINT,
-  balance: { type: DataTypes.DECIMAL(12,2), defaultValue: 0 },
-  created_at: DataTypes.DATE,
-  updated_at: DataTypes.DATE
-}, { tableName: 'Wallet', timestamps: false });
+export interface WalletAttributes {
+  wallet_id: number;
+  store_id: number;
+  balance: number;
+  created_at?: Date;
+  updated_at?: Date;
+}
 
-export const Transaction = sequelize.define('Transaction', {
-  transaction_id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-  wallet_id: DataTypes.BIGINT,
-  amount: DataTypes.DECIMAL(12,2),
-  type: DataTypes.STRING, // credit/debit/request
-  status: DataTypes.STRING, // pending, approved, canceled
-  description: DataTypes.TEXT,
-  created_at: DataTypes.DATE,
-  updated_at: DataTypes.DATE
-}, { tableName: 'Transactions', timestamps: false });
+export interface WalletCreationAttributes extends Optional<WalletAttributes, "wallet_id"> {}
+
+export class Wallet extends Model<WalletAttributes, WalletCreationAttributes>
+  implements WalletAttributes {
+  public wallet_id!: number;
+  public store_id!: number;
+  public balance!: number;
+  public readonly created_at!: Date;
+  public readonly updated_at!: Date;
+}
+
+Wallet.init(
+  {
+    wallet_id: {
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    store_id: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    balance: {
+      type: DataTypes.DECIMAL(14, 2),
+      allowNull: false,
+      defaultValue: 0.0,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "Wallet",
+    tableName: "wallet",
+    timestamps: false,
+  }
+);
+
+export default Wallet;

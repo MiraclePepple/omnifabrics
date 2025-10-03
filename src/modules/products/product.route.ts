@@ -13,5 +13,8 @@ router.get("/my-products", authenticate, ProductController.listSellerProducts);
 
 // Buyer routes
 router.get("/search", ProductController.searchProducts);
+router.get('/:id', ProductController.getProduct); // Get single product
+
+
 
 export default router;

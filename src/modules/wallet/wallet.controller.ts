@@ -1,14 +1,25 @@
-import { Request, Response } from 'express';
-import * as service from './wallet.service';
+// src/modules/wallet/wallet.controller.ts
+import { Request, Response } from "express";
+import walletService from "./wallet.service";
 
-export const getWallet = async (req:Request, res:Response) => {
-  const storeId = Number(req.params.storeId);
-  const w = await service.getWalletForStore(storeId);
-  res.json(w || { balance: 0 });
-};
+class WalletController {
+  async getHistory(req: Request, res: Response) {
+    try {
+      const { storeId } = req.params;
+      const { status } = req.query; // optional filter: success, failed, pending
 
-export const createTx = async (req:Request, res:Response) => {
-  const { wallet_id, amount, type, description } = req.body;
-  const tx = await service.createTransaction(wallet_id, amount, type, description);
-  res.status(201).json(tx);
-};
+      const history = await walletService.getWalletHistory(Number(storeId), status as string);
+
+      return res.json({
+        message: "Wallet transaction history retrieved",
+        storeId,
+        count: history.length,
+        transactions: history,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: "Error fetching wallet history", error: error.message });
+    }
+  }
+}
+
+export default new WalletController();

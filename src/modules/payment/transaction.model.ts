@@ -1,38 +1,82 @@
-// src/modules/payments/transaction.model.ts
-import { Model, DataTypes } from 'sequelize';
-import sequelize from '../../config/db';
+// src/modules/payment/transaction.model.ts
+import { DataTypes, Model, Optional } from "sequelize";
+import sequelize from "../../config/db";
+import { User } from "../users/user.model";
+import { Order} from "../orders/order.model";
+import { Store } from "../store/store.model";
 
-export class Transaction extends Model {
+export interface TransactionAttributes {
+  transaction_id: number;
+  order_id: number;
+  user_id: number;
+  amount: number;
+  currency?: string;
+  status?: string;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export interface TransactionCreationAttributes
+  extends Optional<TransactionAttributes, "transaction_id" | "currency" | "status"> {}
+
+class Transaction
+  extends Model<TransactionAttributes, TransactionCreationAttributes>
+  implements TransactionAttributes {
   public transaction_id!: number;
-  public order_id!: number | null;
+  public order_id!: number;
   public user_id!: number;
   public amount!: number;
-  public currency!: string;
-  public provider_ref!: string | null;
-  public provider_data!: any | null;
-  public status!: 'pending' | 'paid' | 'failed' | 'refunded';
-  public created_at!: Date;
-  public updated_at!: Date;
+  public currency?: string;
+  public status?: string;
+  public readonly created_at!: Date;
+  public readonly updated_at!: Date;
 }
 
 Transaction.init(
   {
-    transaction_id: { type: DataTypes.BIGINT.UNSIGNED, primaryKey: true, autoIncrement: true },
-    order_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true },
-    user_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
-    amount: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
-    currency: { type: DataTypes.STRING(10), allowNull: false, defaultValue: 'NGN' },
-    provider_ref: { type: DataTypes.STRING(255), allowNull: true },
-    provider_data: { type: DataTypes.JSON, allowNull: true },
-    status: { type: DataTypes.ENUM('pending', 'paid', 'failed', 'refunded'), defaultValue: 'pending' },
-    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    transaction_id: {
+      type: DataTypes.BIGINT,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    order_id: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    user_id: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    amount: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+    },
+    currency: {
+      type: DataTypes.STRING(10),
+      defaultValue: "NGN",
+    },
+    status: {
+      type: DataTypes.STRING(50),
+      defaultValue: "pending",
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
   },
   {
     sequelize,
-    tableName: 'transactions',
+    modelName: "Transaction",
+    tableName: "transactions",
     timestamps: false,
   }
 );
+
+// ✅ Associations
+
 
 export default Transaction;
