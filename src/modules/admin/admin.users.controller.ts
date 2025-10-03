@@ -68,37 +68,7 @@ export const AdminUsersController = {
     }
   },
 
-  // PATCH /admin/users/:id/suspend
-  async suspendUser(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const user = await User.findByPk(id);
-      if (!user) return res.status(404).json({ message: 'User not found' });
-
-      (user as any).is_suspended = true;
-      await user.save();
-      return res.json({ message: 'User suspended' });
-    } catch (err: any) {
-      return res.status(500).json({ message: err.message });
-    }
-  },
-
-  // PATCH /admin/users/:id/activate
-  async activateUser(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const user = await User.findByPk(id);
-      if (!user) return res.status(404).json({ message: 'User not found' });
-
-      (user as any).is_suspended = false;
-      (user as any).is_active = true;
-      await user.save();
-      return res.json({ message: 'User activated' });
-    } catch (err: any) {
-      return res.status(500).json({ message: err.message });
-    }
-  },
-
+  
   // DELETE /admin/users/:id
   async deleteUser(req: Request, res: Response) {
     try {
